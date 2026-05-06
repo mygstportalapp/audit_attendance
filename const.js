@@ -1,0 +1,2 @@
+const google_id = '1021978161049-m0qcli73053amlqo773e9irqkharfved.apps.googleusercontent.com'
+const gsheet_url = 'https://script.google.com/macros/s/AKfycbwBF8Ei3H-1ZjGZXnIVVgGACkTFIlF9jj3H6hucTZydXf-thPMB1JWXO3BQoRMQIuei/exec'

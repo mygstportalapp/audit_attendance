@@ -1,0 +1,15 @@
+{
+  "name": "Audit Tracker",
+  "short_name": "Audit App",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "start_url": "./index.html",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2907/2907972.png", 
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
