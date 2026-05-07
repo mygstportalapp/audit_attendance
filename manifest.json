@@ -1,8 +1,8 @@
 {
   "name": "Audit Tracker",
   "short_name": "Audit Tracker",
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#f5f6f8",
+  "background_color": "#f5f6f8",
   "display": "standalone",
   "start_url": "./index.html",
   "icons": [
