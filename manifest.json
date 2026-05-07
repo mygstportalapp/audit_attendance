@@ -1,7 +1,7 @@
 {
   "name": "Audit Tracker",
-  "short_name": "Audit App",
-  "display": "standalone",
+  "short_name": "Audit Tracker",
+  "display": "fullscreen",
   "background_color": "#ffffff",
   "theme_color": "#007bff",
   "start_url": "./index.html",
