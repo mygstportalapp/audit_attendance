@@ -18,7 +18,7 @@ request.onupgradeneeded = (e) => {
     if (!db.objectStoreNames.contains("Attendance")) db.createObjectStore("Attendance", { keyPath: "id" });
     if (!db.objectStoreNames.contains("WorkMaster")) db.createObjectStore("WorkMaster", { keyPath: "name" });
     if (!db.objectStoreNames.contains("SocietyMaster")) db.createObjectStore("SocietyMaster", { keyPath: "code" });
-    if (!db.objectStoreNames.contains("BranchMaster")) db.createObjectStore("BranchMaster", { keyPath: "name" });
+    if (!db.objectStoreNames.contains("BranchMaster")) db.createObjectStore("BranchMaster", { keyPath: ["name","societyCode"] });
     if (!db.objectStoreNames.contains("UserMaster")) db.createObjectStore("UserMaster", { keyPath: "email" }); 
 };
 request.onsuccess = (e) => { 
