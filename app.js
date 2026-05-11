@@ -7,7 +7,6 @@ let currentUser = null;
 let memSocieties = [];
 let memBranches = [];
 
-// 🔥 MEMORY VARIABLES FOR AUTO-SYNC BUG FIX
 let currentBulkUser = null;
 let currentBulkWork = null;
 
@@ -296,9 +295,8 @@ function addBranch() {
     const branchName = document.getElementById('newBranch').value.trim();
     if (!socCode || !branchName) return showToast("Select Society and provide Branch.");
     pushMasterToCloud("Branches", [socCode, branchName], "Branch Added!", () => { document.getElementById('newBranch').value = ""; });
-}
-
-// ==========================================
+                }
+        // ==========================================
 // SAVE ATTENDANCE LOCALLY & SYNC
 // ==========================================
 document.getElementById('auditForm').addEventListener('submit', (e) => {
@@ -385,7 +383,6 @@ async function autoSync() {
             tx.oncomplete = () => {
                 if(document.getElementById('page-report').classList.contains('active-page')) renderReport(); 
                 
-                // 🔥 BUG FIX: Use safe memory variables to reload the view, immune to UI string splitting errors
                 if(document.getElementById('page-bulk-approval').classList.contains('active-page') && currentBulkUser && currentBulkWork) {
                     openBulkView(currentBulkUser, currentBulkWork);
                 }
@@ -475,7 +472,7 @@ function renderReport() {
 }
 
 // ==========================================
-// 🔥 NEW UI: BULK APPROVAL CARDS
+// BULK APPROVAL VIEW
 // ==========================================
 function closeBulkView() {
     currentBulkUser = null;
@@ -537,7 +534,6 @@ function openBulkView(userName, workName) {
             return dB - dA;
         });
 
-        // 🔥 Dynamic Counters
         let pending = 0, approved = 0, rejected = 0, md = 0;
         records.forEach(r => {
             md += parseInt(r.manDay) || 0;
@@ -558,7 +554,7 @@ function openBulkView(userName, workName) {
         const showActions = isAdminUser() && hasPending;
         
         document.getElementById('bulkActionHeader').style.display = showActions ? 'flex' : 'none';
-        document.getElementById('bulkActionButtons').style.display = 'none'; // Hidden until items are selected
+        document.getElementById('bulkActionButtons').style.display = 'none'; 
         document.getElementById('masterCb').classList.remove('selected');
         document.getElementById('bulkSelectionCount').innerText = '';
 
@@ -636,3 +632,15 @@ function submitBulkUpdate(newStatus) {
         showToast("Network Error");
     });
 }
+
+// ==========================================
+// PWA SERVICE WORKER REGISTRATION
+// ==========================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => {
+            console.log('Service Worker registration failed: ', err);
+        });
+    });
+    }
+                                          
