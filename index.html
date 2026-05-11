@@ -1,30 +1,180 @@
-         </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Enterprise Audit Portal</title>
+    
+    <script src="const.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <style>
+        :root { --primary: #0f62fe; --bg: #f5f6f8; --text: #1a1a1a; --card: #ffffff; --border: #eaedf1; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent;}
+        
+        #login-screen, #app-screen { display: none; height: 100vh; flex-direction: column; }
+        .active-screen { display: flex !important; }
+        
+        .login-container { margin: auto; padding: 40px 20px; background: var(--card); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 90%; max-width: 400px; text-align: center; }
+        .login-container h2 { margin-top: 0; color: var(--primary); font-size: 24px; }
+        
+        .header { background: var(--card); padding: 16px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; position: sticky; top: 0; z-index: 10;}
+        .user-badge { font-size: 12px; background: #e0e8ff; color: var(--primary); padding: 6px 12px; border-radius: 20px; font-weight: 600;}
+        .logout-btn { background: none; border: none; color: #da1e28; font-weight: bold; font-size: 13px; margin-left: 10px; cursor: pointer; padding: 5px;}
+        
+        .page { display: none; padding: 15px; padding-bottom: 100px; overflow-y: auto; flex-grow: 1;}
+        .active-page { display: block; }
+        .card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);}
+        
+        h3 { margin-top: 0; font-size: 16px; color: #333; margin-bottom: 15px;}
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #555; }
+        
+        select, input { width: 100%; padding: 14px; border: 1.5px solid #dcdcdc; border-radius: 12px; box-sizing: border-box; font-size: 16px; background: #fafafa; transition: 0.2s; -webkit-appearance: none; appearance: none;}
+        select { background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23131C23%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 15px top 50%; background-size: 12px auto; padding-right: 40px;}
+        select:focus, input:focus { border-color: var(--primary); outline: none; background: #fff; box-shadow: 0 0 0 3px rgba(15, 98, 254, 0.1);}
+        
+        .row { display: flex; gap: 10px; }
+        .row > div { flex: 1; }
+        
+        .btn { padding: 16px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; width: 100%; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:active { transform: scale(0.98); background: #004ecc;}
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-outline:active { background: rgba(15,98,254,0.1); }
+        
+        .badge { padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; color: white; text-transform: uppercase; display: inline-block;}
+        .bg-pending { background: #f1c21b; color: #000; }
+        .bg-approved { background: #24a148; }
+        .bg-rejected { background: #da1e28; }
+        
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 10px 0; padding-bottom: max(15px, env(safe-area-inset-bottom)); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 50;}
+        .nav-item { text-align: center; color: #a1a1a1; font-size: 11px; font-weight: 600; cursor: pointer; flex: 1; padding: 8px; border-radius: 12px; transition: 0.2s;}
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 20px; display: block; margin-bottom: 4px; filter: grayscale(100%) opacity(0.5);}
+        .nav-item.active .nav-icon { filter: none;}
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 0; }
+        th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f9fafb; color: #666; font-size: 12px; text-transform: uppercase; font-weight: 700; position: sticky; top: 0; z-index: 5;}
+        
+        .summary-box { padding: 20px; border-radius: 16px; text-align: center; border: 1px solid var(--border); flex: 1;}
+        .summary-box span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .summary-box div { font-size: 36px; font-weight: 800; margin-top: 5px; }
+        
+        .sync-tracker { background: #fff; padding: 16px; border-radius: 16px; border: 1px solid var(--border); margin-top: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);}
+        .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 30px; font-size: 13px; font-weight: bold; display: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+
+        .table-container { max-height: 55vh; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; }
+
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; visibility: hidden; opacity: 0; transition: opacity 0.2s; backdrop-filter: blur(3px); }
+        .loading-overlay.active { visibility: visible; opacity: 1; }
+        .spinner { border: 4px solid #eaedf1; border-top: 4px solid var(--primary); border-radius: 50%; width: 50px; height: 50px; animation: spin 0.8s linear infinite; margin-bottom: 15px;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { font-weight: 700; color: var(--primary); font-size: 16px; letter-spacing: 0.5px;}
+
+        /* 🔥 MOBILE-FIRST BULK UI */
+        .bulk-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; display: flex; align-items: center; transition: 0.2s; position: relative;}
+        .bulk-card.selectable { cursor: pointer; }
+        .bulk-card.selected { border-color: var(--primary); background: #f0f4ff; }
+        .custom-cb { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #ccc; display: flex; justify-content: center; align-items: center; margin-right: 14px; background: white; transition: 0.1s;}
+        .bulk-card.selected .custom-cb, .master-cb.selected { background: var(--primary); border-color: var(--primary); }
+        .bulk-card.selected .custom-cb::after, .master-cb.selected::after { content: "✔"; color: white; font-size: 14px; font-weight: bold; }
+        .bulk-action-bar { background: white; padding: 12px 15px; border: 1px solid var(--border); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: -15px; z-index: 5; box-shadow: 0 4px 10px rgba(0,0,0,0.02);}
+    </style>
+</head>
+<body>
+
+    <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div><div id="loadingText" class="loading-text">Processing...</div></div>
+
+    <div id="login-screen" class="active-screen">
+        <div class="login-container">
+            <h2>Audit Portal</h2>
+            <p style="font-size: 15px; color: #666; margin-bottom: 25px;">Sign in with your authorized Google account</p>
+            
+            <!-- ⚠️ PASTE YOUR CLIENT ID BELOW ⚠️ -->
+            <div id="g_id_onload" data-client_id="YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+            <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="pill" data-logo_alignment="center" style="display: flex; justify-content: center;"></div>
+            <p id="loginError" style="color: red; font-size: 14px; display: none; margin-top: 20px; font-weight: bold;"></p>
+        </div>
+    </div>
+
+    <div id="app-screen">
+        <div class="header">
+            <span id="headerTitle">Attendance</span>
+            <div><span class="user-badge" id="userBadge">User</span><button class="logout-btn" onclick="logout()">Logout</button></div>
+        </div>
+
+        <!-- NEW ENTRY VIEW -->
+        <div id="page-attendance" class="page active-page">
+            <div class="card">
+                <form id="auditForm">
+                    <div class="form-group"><label>Audit Work</label><select id="workSelect" required><option value="">Select Work</option></select></div>
+                    <div class="form-group"><label>Date</label><input type="date" id="auditDate" required></div>
+                    <div class="form-group"><label>Visit Type</label><select id="visitType" required><option value="full">Full Day (1 Branch)</option><option value="split">Split Day (2 Branches)</option></select></div>
+                    <div class="form-group"><label id="lblVisit1">Society & Branch</label><select id="society1" required style="margin-bottom:10px;"><option value="">Select Society</option></select><select id="branch1" required><option value="">Select Branch</option></select></div>
+                    <div class="form-group" id="visit2Group" style="display: none;"><label>Afternoon Society & Branch</label><select id="society2" style="margin-bottom:10px;"><option value="">Select Society</option></select><select id="branch2"><option value="">Select Branch</option></select></div>
+                    <button type="submit" class="btn btn-primary">Save Man-Day</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- MAIN DASHBOARD -->
+        <div id="page-report" class="page">
+            <div class="card" style="padding: 15px;">
+                <h3 style="margin-bottom: 10px;">Audit Dashboard</h3>
+                <div class="row" style="margin-bottom: 15px;">
+                    <div><select id="reportWorkSelect" onchange="renderReport()"><option value="ALL">-- All Audits --</option></select></div>
+                    <div id="adminUserFilter" style="display: none;"><select id="reportUserSelect" onchange="renderReport()"><option value="ALL">-- All Users --</option></select></div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <div class="summary-box" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border-color: #c8e6c9; padding: 15px;">
+                        <span style="color: #2e7d32;">Approved</span><div id="approvedManDaysDisplay" style="color: #2e7d32; font-size: 32px;">0</div>
+                    </div>
+                    <div class="summary-box" style="background: linear-gradient(135deg, #fff8e1 0%, #fffdf5 100%); border-color: #ffecb3; padding: 15px;">
+                        <span style="color: #d4a100;">Pending</span><div id="pendingManDaysDisplay" style="color: #d4a100; font-size: 32px;">0</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="reportTable">
+                        <thead><tr><th>Summary & Job</th><th>MD</th><th>Status</th><th style="width: 30px;"></th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
                 
                 <div class="sync-tracker"><div id="syncStatusText" style="font-size: 14px; font-weight: 800; color: #0f62fe;">🟢 Auto-Sync Active</div><div id="lastSyncTime" style="font-size: 12px; color: #888; margin-top: 6px;">Waiting for first sync...</div></div>
             </div>
         </div>
 
-        <!-- BULK APPROVAL VIEW -->
+        <!-- 🔥 NEW DESIGN: BULK APPROVAL VIEW -->
         <div id="page-bulk-approval" class="page">
-            <div class="card" style="padding: 15px;">
-                <button class="btn btn-outline" style="padding: 8px 15px; margin-bottom: 15px; border:none; background:#eaedf1; color:#333; width: auto;" onclick="closeBulkView()">⬅ Back to Dashboard</button>
-                <h3 id="bulkViewTitle" style="margin-bottom: 15px; font-size: 18px;"></h3>
+            <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none;">
+                <button class="btn btn-outline" style="padding: 8px 15px; margin-bottom: 15px; border:none; background:#eaedf1; color:#333; width: auto;" onclick="closeBulkView()">⬅ Back</button>
+                <h3 id="bulkViewTitle" style="margin-bottom: 8px; font-size: 18px;"></h3>
+                <div id="bulkSummaryInfo" style="margin-bottom: 5px;"></div>
+            </div>
 
-                <!-- 🔥 DEFAULT TO DISPLAY NONE TO PREVENT FLASHING -->
-                <div class="row" style="margin-bottom: 15px; display: none;" id="bulkActionButtons">
-                    <button class="btn btn-primary" style="background: #24a148; font-size: 13px; padding: 10px;" onclick="submitBulkUpdate('Approved')">✔ Approve Selected</button>
-                    <button class="btn btn-primary" style="background: #da1e28; font-size: 13px; padding: 10px;" onclick="submitBulkUpdate('Rejected')">✖ Reject Selected</button>
+            <!-- Sticky Selection Header -->
+            <div id="bulkActionHeader" class="bulk-action-bar" style="display: none;">
+                <div style="display: flex; align-items: center; cursor: pointer; font-weight: 700; font-size: 15px; color: #333;" onclick="toggleSelectAllCards()">
+                    <div class="custom-cb master-cb" id="masterCb"></div> <span id="masterCbText">Select All</span>
                 </div>
+                <div id="bulkSelectionCount" style="font-size: 13px; color: var(--primary); font-weight: 800;"></div>
+            </div>
 
-                <div class="table-container" style="max-height: 50vh;">
-                    <table id="bulkTable">
-                        <thead></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
+            <!-- Card List Container -->
+            <div id="bulkListContainer" style="padding-bottom: 100px; padding-top: 15px;"></div>
+
+            <!-- Floating Action Bar (Hidden until selection) -->
+            <div id="bulkActionButtons" style="position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); background: white; padding: 12px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); display: none; gap: 12px; z-index: 100; width: 85%; max-width: 350px;">
+                <button class="btn btn-primary" style="background: #24a148; font-size: 14px; padding: 12px;" onclick="submitBulkUpdate('Approved')">✔ Approve</button>
+                <button class="btn btn-primary" style="background: #da1e28; font-size: 14px; padding: 12px;" onclick="submitBulkUpdate('Rejected')">✖ Reject</button>
             </div>
         </div>
 
+        <!-- SETTINGS VIEW -->
         <div id="page-masters" class="page">
             <div class="card">
                 <h3>Users (Access Control)</h3>
