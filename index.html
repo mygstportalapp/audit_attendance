@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Enterprise Audit Portal</title>
     
+    <!-- 🔥 PWA ANDROID INSTALL META TAGS -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAAG0lEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAMAcD9AAAT1m0bwAAAAASUVORK5CYII=">
+
     <script src="const.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -18,7 +23,7 @@
         .login-container { margin: auto; padding: 40px 20px; background: var(--card); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 90%; max-width: 400px; text-align: center; }
         .login-container h2 { margin-top: 0; color: var(--primary); font-size: 24px; }
         
-        .header { background: var(--card); padding: 16px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; position: sticky; top: 0; z-index: 20;}
+        .header { background: var(--card); padding: 16px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; position: sticky; top: 0; z-index: 30;}
         .user-badge { font-size: 12px; background: #e0e8ff; color: var(--primary); padding: 6px 12px; border-radius: 20px; font-weight: 600;}
         .logout-btn { background: none; border: none; color: #da1e28; font-weight: bold; font-size: 13px; margin-left: 10px; cursor: pointer; padding: 5px;}
         
@@ -60,12 +65,13 @@
         
         .summary-box { padding: 20px; border-radius: 16px; text-align: center; border: 1px solid var(--border); flex: 1;}
         .summary-box span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-        .summary-box div { font-size: 36px; font-weight: 800; margin-top: 5px; }
+        .summary-box div { font-size: 30px; font-weight: 800; margin-top: 5px; }
         
         .sync-tracker { background: #fff; padding: 16px; border-radius: 16px; border: 1px solid var(--border); margin-top: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);}
         .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 30px; font-size: 13px; font-weight: bold; display: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 
-        .table-container { max-height: 55vh; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; }
+        /* 🔥 Removed Max-Height so tables scroll naturally within the page */
+        .table-container { border: 1px solid var(--border); border-radius: 12px; background: white; overflow: hidden; }
 
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; visibility: hidden; opacity: 0; transition: opacity 0.2s; backdrop-filter: blur(3px); }
         .loading-overlay.active { visibility: visible; opacity: 1; }
@@ -73,7 +79,6 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { font-weight: 700; color: var(--primary); font-size: 16px; letter-spacing: 0.5px;}
 
-        /* 🔥 MOBILE-FIRST BULK UI */
         .bulk-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; display: flex; align-items: center; transition: 0.2s; position: relative;}
         .bulk-card.selectable { cursor: pointer; }
         .bulk-card.selected { border-color: var(--primary); background: #f0f4ff; }
@@ -117,38 +122,44 @@
             </div>
         </div>
 
+        <!-- 🔥 UPDATED DESIGN: MAIN DASHBOARD STICKY HEADER -->
         <div id="page-report" class="page">
-            <div class="card" style="padding: 15px;">
-                <h3 style="margin-bottom: 10px;">Audit Dashboard</h3>
-                <div class="row" style="margin-bottom: 15px;">
-                    <div><select id="reportWorkSelect" onchange="renderReport()"><option value="ALL">-- All Audits --</option></select></div>
-                    <div id="adminUserFilter" style="display: none;"><select id="reportUserSelect" onchange="renderReport()"><option value="ALL">-- All Users --</option></select></div>
-                </div>
-                
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <div class="summary-box" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border-color: #c8e6c9; padding: 15px;">
-                        <span style="color: #2e7d32;">Approved</span><div id="approvedManDaysDisplay" style="color: #2e7d32; font-size: 32px;">0</div>
+            
+            <!-- Sticky Section -->
+            <div style="position: sticky; top: -15px; background: var(--bg); z-index: 15; margin: -15px -15px 15px -15px; padding: 15px 15px 0 15px;">
+                <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none; box-shadow: none;">
+                    <h3 style="margin-bottom: 10px;">Audit Dashboard</h3>
+                    <div class="row" style="margin-bottom: 15px;">
+                        <div><select id="reportWorkSelect" onchange="renderReport()"><option value="ALL">-- All Audits --</option></select></div>
+                        <div id="adminUserFilter" style="display: none;"><select id="reportUserSelect" onchange="renderReport()"><option value="ALL">-- All Users --</option></select></div>
                     </div>
-                    <div class="summary-box" style="background: linear-gradient(135deg, #fff8e1 0%, #fffdf5 100%); border-color: #ffecb3; padding: 15px;">
-                        <span style="color: #d4a100;">Pending</span><div id="pendingManDaysDisplay" style="color: #d4a100; font-size: 32px;">0</div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <div class="summary-box" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border-color: #c8e6c9; padding: 10px;">
+                            <span style="color: #2e7d32;">Approved</span><div id="approvedManDaysDisplay" style="color: #2e7d32;">0</div>
+                        </div>
+                        <div class="summary-box" style="background: linear-gradient(135deg, #fff8e1 0%, #fffdf5 100%); border-color: #ffecb3; padding: 10px;">
+                            <span style="color: #d4a100;">Pending</span><div id="pendingManDaysDisplay" style="color: #d4a100;">0</div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="table-container">
-                    <table id="reportTable">
-                        <thead><tr><th>Summary & Job</th><th>MD</th><th>Status</th><th style="width: 30px;"></th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                
-                <div class="sync-tracker"><div id="syncStatusText" style="font-size: 14px; font-weight: 800; color: #0f62fe;">🟢 Auto-Sync Active</div><div id="lastSyncTime" style="font-size: 12px; color: #888; margin-top: 6px;">Waiting for first sync...</div></div>
+                <div style="height: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent); margin: 0 -15px; border-radius: 50%;"></div>
             </div>
+
+            <!-- Free scrolling table -->
+            <div class="table-container">
+                <table id="reportTable">
+                    <thead><tr><th>Summary & Job</th><th>MD</th><th>Status</th><th style="width: 30px;"></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            
+            <div class="sync-tracker" style="margin-top: 20px;"><div id="syncStatusText" style="font-size: 14px; font-weight: 800; color: #0f62fe;">🟢 Auto-Sync Active</div><div id="lastSyncTime" style="font-size: 12px; color: #888; margin-top: 6px;">Waiting for first sync...</div></div>
         </div>
 
-        <!-- 🔥 UPDATED DESIGN: STICKY BULK APPROVAL VIEW -->
+        <!-- BULK APPROVAL VIEW -->
         <div id="page-bulk-approval" class="page">
             
-            <!-- Sticky Header Wrapper -->
             <div style="position: sticky; top: -15px; background: var(--bg); z-index: 15; margin: -15px -15px 10px -15px; padding: 15px 15px 0 15px;">
                 
                 <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none; box-shadow: none;">
@@ -164,11 +175,9 @@
                     <div id="bulkSelectionCount" style="font-size: 13px; color: var(--primary); font-weight: 800;"></div>
                 </div>
                 
-                <!-- Tiny shadow beneath the sticky header -->
                 <div style="height: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent); margin: 0 -15px; border-radius: 50%;"></div>
             </div>
 
-            <!-- List container that scrolls freely under the header -->
             <div id="bulkListContainer" style="padding-bottom: 100px;"></div>
 
             <div id="bulkActionButtons" style="position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); background: white; padding: 12px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); display: none; gap: 12px; z-index: 100; width: 85%; max-width: 350px;">
