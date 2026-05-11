@@ -7,6 +7,10 @@ let currentUser = null;
 let memSocieties = [];
 let memBranches = [];
 
+// 🔥 MEMORY VARIABLES FOR AUTO-SYNC BUG FIX
+let currentBulkUser = null;
+let currentBulkWork = null;
+
 const dbName = "AuditAppDB_Final_v7"; 
 let db;
 
@@ -28,8 +32,6 @@ request.onsuccess = (e) => {
 // ==========================================
 // DATE & SECURITY HELPERS
 // ==========================================
-
-// 🔥 GLOBAL SECURITY HELPER: Strips accidental spaces and normalizes case
 function isAdminUser() {
     return currentUser && currentUser.role && currentUser.role.trim().toLowerCase() === 'admin';
 }
@@ -382,13 +384,12 @@ async function autoSync() {
             
             tx.oncomplete = () => {
                 if(document.getElementById('page-report').classList.contains('active-page')) renderReport(); 
-                if(document.getElementById('page-bulk-approval').classList.contains('active-page')) {
-                    const titleText = document.getElementById('bulkViewTitle').innerText;
-                    if(titleText) {
-                        const parts = titleText.split('\n');
-                        if(parts.length >= 1) { openBulkView(parts[0].trim(), (parts[1] || parts[0]).trim()); }
-                    }
+                
+                // 🔥 BUG FIX: Use safe memory variables to reload the view, immune to UI string splitting errors
+                if(document.getElementById('page-bulk-approval').classList.contains('active-page') && currentBulkUser && currentBulkWork) {
+                    openBulkView(currentBulkUser, currentBulkWork);
                 }
+                
                 updateSyncUI("Success", "🟢 Auto-Sync Active");
             };
         }
@@ -474,30 +475,57 @@ function renderReport() {
 }
 
 // ==========================================
-// BULK APPROVAL VIEW
+// 🔥 NEW UI: BULK APPROVAL CARDS
 // ==========================================
 function closeBulkView() {
+    currentBulkUser = null;
+    currentBulkWork = null;
     switchPage('report', document.getElementById('nav-report'));
 }
 
-// 🔥 GLOBAL CHECKBOX HELPERS
-window.toggleSelectAll = function(source) {
-    const checkboxes = document.querySelectorAll('.bulk-cb');
-    checkboxes.forEach(cb => cb.checked = source.checked);
+window.toggleCardSelection = function(cardId) {
+    const card = document.getElementById('card-' + cardId);
+    if(card && card.classList.contains('selectable')) {
+        card.classList.toggle('selected');
+        updateSelectionState();
+    }
 };
 
-window.toggleRowCheckbox = function(rowElement, event) {
-    if (event.target.tagName.toLowerCase() === 'input') return;
-    const cb = rowElement.querySelector('.bulk-cb');
-    if (cb) cb.checked = !cb.checked;
+window.toggleSelectAllCards = function() {
+    const masterCb = document.getElementById('masterCb');
+    const isSelectingAll = !masterCb.classList.contains('selected');
+    
+    if(isSelectingAll) masterCb.classList.add('selected');
+    else masterCb.classList.remove('selected');
+
+    document.querySelectorAll('.bulk-card.selectable').forEach(card => {
+        if(isSelectingAll) card.classList.add('selected');
+        else card.classList.remove('selected');
+    });
+    
+    updateSelectionState();
 };
+
+function updateSelectionState() {
+    const selectedCount = document.querySelectorAll('.bulk-card.selected').length;
+    const totalSelectable = document.querySelectorAll('.bulk-card.selectable').length;
+    
+    document.getElementById('bulkSelectionCount').innerText = selectedCount > 0 ? `${selectedCount} Selected` : '';
+    document.getElementById('bulkActionButtons').style.display = selectedCount > 0 ? 'flex' : 'none';
+    
+    const masterCb = document.getElementById('masterCb');
+    if (selectedCount === totalSelectable && totalSelectable > 0) masterCb.classList.add('selected');
+    else masterCb.classList.remove('selected');
+}
 
 function openBulkView(userName, workName) {
+    currentBulkUser = userName;
+    currentBulkWork = workName;
+
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
     document.getElementById('page-bulk-approval').classList.add('active-page');
-    document.getElementById('headerTitle').innerText = 'Review Details';
 
-    const titleHtml = isAdminUser() ? `<span style="color:var(--primary);">${userName}</span> <br><span style="font-size:13px; color:#666;">${workName}</span>` : `<span style="color:var(--primary);">${workName}</span>`;
+    const titleHtml = isAdminUser() ? `<span style="color:var(--primary); font-weight: 800;">${userName}</span> <br><span style="font-size:14px; color:#666; font-weight: 600;">${workName}</span>` : `<span style="color:var(--primary); font-weight: 800;">${workName}</span>`;
     document.getElementById('bulkViewTitle').innerHTML = titleHtml;
 
     db.transaction("Attendance", "readonly").objectStore("Attendance").getAll().onsuccess = (e) => {
@@ -509,43 +537,53 @@ function openBulkView(userName, workName) {
             return dB - dA;
         });
 
-        const hasPending = records.some(r => r.status === 'Pending');
+        // 🔥 Dynamic Counters
+        let pending = 0, approved = 0, rejected = 0, md = 0;
+        records.forEach(r => {
+            md += parseInt(r.manDay) || 0;
+            if (r.status === 'Pending') pending++;
+            else if (r.status === 'Approved') approved++;
+            else rejected++;
+        });
+
+        document.getElementById('bulkSummaryInfo').innerHTML = `
+            <div style="display:flex; gap:8px; font-size:11px; margin-top:8px;">
+                <span class="badge" style="background:#eaedf1; color:#333;">Total MD: ${md}</span>
+                ${pending > 0 ? `<span class="badge bg-pending">${pending} Pending</span>` : ''}
+                ${approved > 0 ? `<span class="badge bg-approved">${approved} Approved</span>` : ''}
+            </div>
+        `;
+
+        const hasPending = pending > 0;
         const showActions = isAdminUser() && hasPending;
-        document.getElementById('bulkActionButtons').style.display = showActions ? 'flex' : 'none';
-
-        const thead = document.querySelector('#bulkTable thead');
-        if (showActions) {
-            thead.innerHTML = `<tr><th style="width: 20px; text-align: center;"><input type="checkbox" id="selectAllCb" onchange="toggleSelectAll(this)"></th><th>Date & Location</th><th>Status</th></tr>`;
-        } else {
-            thead.innerHTML = `<tr><th>Date & Location</th><th>Status</th></tr>`;
-        }
-
-        const tbody = document.querySelector('#bulkTable tbody');
         
-        tbody.innerHTML = records.map(r => {
+        document.getElementById('bulkActionHeader').style.display = showActions ? 'flex' : 'none';
+        document.getElementById('bulkActionButtons').style.display = 'none'; // Hidden until items are selected
+        document.getElementById('masterCb').classList.remove('selected');
+        document.getElementById('bulkSelectionCount').innerText = '';
+
+        const container = document.getElementById('bulkListContainer');
+        
+        container.innerHTML = records.map(r => {
             const badgeClass = r.status === 'Approved' ? 'bg-approved' : (r.status === 'Rejected' ? 'bg-rejected' : 'bg-pending');
             const syncIcon = r.isSynced ? `<span style="font-size:10px; opacity:0.6;" title="Synced">☁️</span>` : `<span style="font-size:10px;" title="Pending Sync">⏳</span>`;
-
             let displayDate = formatDisplayDate(r.date);
 
-            let rowHtml = `<tr style="border-bottom: 1px solid #f0f0f0; ${showActions ? 'cursor: pointer;' : ''}" ${showActions ? 'onclick="toggleRowCheckbox(this, event)"' : ''}>`;
-
-            if (showActions) {
-                const checkboxHtml = r.status === 'Pending' ? `<input type="checkbox" class="bulk-cb" value="${r.id}">` : ``;
-                rowHtml += `<td style="vertical-align: middle; text-align:center;">${checkboxHtml}</td>`;
-            }
-
-            rowHtml += `
-                <td>
-                    <div style="font-size: 13px; margin-bottom: 4px; display: flex; align-items: center;">
-                        <b>${displayDate}</b> <span style="margin-left: 4px;">${syncIcon}</span>
+            const isSelectable = showActions && r.status === 'Pending';
+            
+            return `
+            <div class="bulk-card ${isSelectable ? 'selectable' : ''}" id="card-${r.id}" ${isSelectable ? `onclick="toggleCardSelection('${r.id}')"` : ''}>
+                ${isSelectable ? `<div class="custom-cb"></div>` : ``}
+                <div style="flex-grow: 1;">
+                    <div style="font-size: 14px; margin-bottom: 4px; display: flex; align-items: center;">
+                        <b>${displayDate}</b> <span style="margin-left: 6px;">${syncIcon}</span>
                     </div>
-                    <div style="font-size: 11.5px; color: #666; line-height: 1.4; max-width: 180px;">${r.place}</div>
-                </td>
-                <td style="vertical-align: middle;"><span class="badge ${badgeClass}">${r.status}</span></td>
-            </tr>`;
-
-            return rowHtml;
+                    <div style="font-size: 12px; color: #555; line-height: 1.4;">${r.place}</div>
+                </div>
+                <div style="margin-left: 10px;">
+                    <span class="badge ${badgeClass}">${r.status}</span>
+                </div>
+            </div>`;
         }).join('');
     };
 }
@@ -553,14 +591,15 @@ function openBulkView(userName, workName) {
 function submitBulkUpdate(newStatus) {
     if (!isAdminUser()) return showToast("Unauthorized action.");
     
-    const checkedBoxes = document.querySelectorAll('.bulk-cb:checked');
-    if(checkedBoxes.length === 0) return showToast("Select at least one record to update.");
+    const selectedCards = document.querySelectorAll('.bulk-card.selected');
+    if(selectedCards.length === 0) return showToast("Select at least one record.");
 
-    if(!window.confirm(`Mark ${checkedBoxes.length} selected records as ${newStatus}?`)) return;
+    showLoading(`Updating ${selectedCards.length} records...`);
 
-    showLoading(`Updating ${checkedBoxes.length} records...`);
-
-    const updates = Array.from(checkedBoxes).map(cb => ({ id: cb.value, status: newStatus }));
+    const updates = Array.from(selectedCards).map(card => {
+        const id = card.id.replace('card-', '');
+        return { id: id, status: newStatus };
+    });
 
     fetch(googleScriptURL, {
         method: 'POST',
@@ -570,16 +609,12 @@ function submitBulkUpdate(newStatus) {
         if (data.status === "success") {
             const tx = db.transaction("Attendance", "readwrite");
             let completedCount = 0;
-            let lastUserName = "";
-            let lastWorkName = "";
 
             updates.forEach(upd => {
                 tx.objectStore("Attendance").get(upd.id).onsuccess = (e) => {
                     let rec = e.target.result;
                     rec.status = upd.status;
                     rec.isSynced = true;
-                    lastUserName = rec.userName;
-                    lastWorkName = rec.workName;
                     
                     tx.objectStore("Attendance").put(rec);
                     completedCount++;
@@ -587,7 +622,7 @@ function submitBulkUpdate(newStatus) {
                     if(completedCount === updates.length) {
                         hideLoading();
                         showToast(`Successfully marked ${updates.length} as ${newStatus}`);
-                        openBulkView(lastUserName, lastWorkName);
+                        openBulkView(currentBulkUser, currentBulkWork);
                         autoSync();
                     }
                 };
