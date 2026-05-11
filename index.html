@@ -18,7 +18,7 @@
         .login-container { margin: auto; padding: 40px 20px; background: var(--card); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 90%; max-width: 400px; text-align: center; }
         .login-container h2 { margin-top: 0; color: var(--primary); font-size: 24px; }
         
-        .header { background: var(--card); padding: 16px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; position: sticky; top: 0; z-index: 10;}
+        .header { background: var(--card); padding: 16px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; position: sticky; top: 0; z-index: 20;}
         .user-badge { font-size: 12px; background: #e0e8ff; color: var(--primary); padding: 6px 12px; border-radius: 20px; font-weight: 600;}
         .logout-btn { background: none; border: none; color: #da1e28; font-weight: bold; font-size: 13px; margin-left: 10px; cursor: pointer; padding: 5px;}
         
@@ -80,7 +80,7 @@
         .custom-cb { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #ccc; display: flex; justify-content: center; align-items: center; margin-right: 14px; background: white; transition: 0.1s;}
         .bulk-card.selected .custom-cb, .master-cb.selected { background: var(--primary); border-color: var(--primary); }
         .bulk-card.selected .custom-cb::after, .master-cb.selected::after { content: "✔"; color: white; font-size: 14px; font-weight: bold; }
-        .bulk-action-bar { background: white; padding: 12px 15px; border: 1px solid var(--border); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: -15px; z-index: 5; box-shadow: 0 4px 10px rgba(0,0,0,0.02);}
+        .bulk-action-bar { background: white; padding: 12px 15px; border: 1px solid var(--border); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; margin-bottom: 0px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 5;}
     </style>
 </head>
 <body>
@@ -92,7 +92,6 @@
             <h2>Audit Portal</h2>
             <p style="font-size: 15px; color: #666; margin-bottom: 25px;">Sign in with your authorized Google account</p>
             
-            <!-- Google Login Connected to your specific Client ID -->
             <div id="g_id_onload" data-client_id="1021978161049-m0qcli73053amlqo773e9irqkharfved.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
             <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="pill" data-logo_alignment="center" style="display: flex; justify-content: center;"></div>
             <p id="loginError" style="color: red; font-size: 14px; display: none; margin-top: 20px; font-weight: bold;"></p>
@@ -146,21 +145,31 @@
             </div>
         </div>
 
+        <!-- 🔥 UPDATED DESIGN: STICKY BULK APPROVAL VIEW -->
         <div id="page-bulk-approval" class="page">
-            <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none;">
-                <button class="btn btn-outline" style="padding: 8px 15px; margin-bottom: 15px; border:none; background:#eaedf1; color:#333; width: auto;" onclick="closeBulkView()">⬅ Back</button>
-                <h3 id="bulkViewTitle" style="margin-bottom: 8px; font-size: 18px;"></h3>
-                <div id="bulkSummaryInfo" style="margin-bottom: 5px;"></div>
-            </div>
-
-            <div id="bulkActionHeader" class="bulk-action-bar" style="display: none;">
-                <div style="display: flex; align-items: center; cursor: pointer; font-weight: 700; font-size: 15px; color: #333;" onclick="toggleSelectAllCards()">
-                    <div class="custom-cb master-cb" id="masterCb"></div> <span id="masterCbText">Select All</span>
+            
+            <!-- Sticky Header Wrapper -->
+            <div style="position: sticky; top: -15px; background: var(--bg); z-index: 15; margin: -15px -15px 10px -15px; padding: 15px 15px 0 15px;">
+                
+                <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none; box-shadow: none;">
+                    <button class="btn btn-outline" style="padding: 8px 15px; margin-bottom: 15px; border:none; background:#eaedf1; color:#333; width: auto;" onclick="closeBulkView()">⬅ Back</button>
+                    <h3 id="bulkViewTitle" style="margin-bottom: 8px; font-size: 18px;"></h3>
+                    <div id="bulkSummaryInfo" style="margin-bottom: 5px;"></div>
                 </div>
-                <div id="bulkSelectionCount" style="font-size: 13px; color: var(--primary); font-weight: 800;"></div>
+
+                <div id="bulkActionHeader" class="bulk-action-bar" style="display: none; border-top: 1px solid #f0f0f0;">
+                    <div style="display: flex; align-items: center; cursor: pointer; font-weight: 700; font-size: 15px; color: #333;" onclick="toggleSelectAllCards()">
+                        <div class="custom-cb master-cb" id="masterCb"></div> <span id="masterCbText">Select All</span>
+                    </div>
+                    <div id="bulkSelectionCount" style="font-size: 13px; color: var(--primary); font-weight: 800;"></div>
+                </div>
+                
+                <!-- Tiny shadow beneath the sticky header -->
+                <div style="height: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent); margin: 0 -15px; border-radius: 50%;"></div>
             </div>
 
-            <div id="bulkListContainer" style="padding-bottom: 100px; padding-top: 15px;"></div>
+            <!-- List container that scrolls freely under the header -->
+            <div id="bulkListContainer" style="padding-bottom: 100px;"></div>
 
             <div id="bulkActionButtons" style="position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); background: white; padding: 12px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); display: none; gap: 12px; z-index: 100; width: 85%; max-width: 350px;">
                 <button class="btn btn-primary" style="background: #24a148; font-size: 14px; padding: 12px;" onclick="submitBulkUpdate('Approved')">✔ Approve</button>
