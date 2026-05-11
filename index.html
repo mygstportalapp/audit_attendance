@@ -146,14 +146,14 @@
                 <button class="btn btn-outline" style="padding: 8px 15px; margin-bottom: 15px; border:none; background:#eaedf1; color:#333; width: auto;" onclick="closeBulkView()">⬅ Back to Dashboard</button>
                 <h3 id="bulkViewTitle" style="margin-bottom: 15px; font-size: 18px;"></h3>
 
-                <div class="row" style="margin-bottom: 15px;" id="bulkActionButtons">
+                <!-- 🔥 DEFAULT TO DISPLAY NONE TO PREVENT FLASHING -->
+                <div class="row" style="margin-bottom: 15px; display: none;" id="bulkActionButtons">
                     <button class="btn btn-primary" style="background: #24a148; font-size: 13px; padding: 10px;" onclick="submitBulkUpdate('Approved')">✔ Approve Selected</button>
                     <button class="btn btn-primary" style="background: #da1e28; font-size: 13px; padding: 10px;" onclick="submitBulkUpdate('Rejected')">✖ Reject Selected</button>
                 </div>
 
                 <div class="table-container" style="max-height: 50vh;">
                     <table id="bulkTable">
-                        <!-- Dynamically Injected by JavaScript -->
                         <thead></thead>
                         <tbody></tbody>
                     </table>
