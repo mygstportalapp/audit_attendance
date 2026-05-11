@@ -92,7 +92,7 @@
             <h2>Audit Portal</h2>
             <p style="font-size: 15px; color: #666; margin-bottom: 25px;">Sign in with your authorized Google account</p>
             
-            <!-- ⚠️ PASTE YOUR CLIENT ID BELOW ⚠️ -->
+            <!-- Google Login Connected to your specific Client ID -->
             <div id="g_id_onload" data-client_id="1021978161049-m0qcli73053amlqo773e9irqkharfved.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
             <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="pill" data-logo_alignment="center" style="display: flex; justify-content: center;"></div>
             <p id="loginError" style="color: red; font-size: 14px; display: none; margin-top: 20px; font-weight: bold;"></p>
@@ -105,7 +105,6 @@
             <div><span class="user-badge" id="userBadge">User</span><button class="logout-btn" onclick="logout()">Logout</button></div>
         </div>
 
-        <!-- NEW ENTRY VIEW -->
         <div id="page-attendance" class="page active-page">
             <div class="card">
                 <form id="auditForm">
@@ -119,7 +118,6 @@
             </div>
         </div>
 
-        <!-- MAIN DASHBOARD -->
         <div id="page-report" class="page">
             <div class="card" style="padding: 15px;">
                 <h3 style="margin-bottom: 10px;">Audit Dashboard</h3>
@@ -148,7 +146,6 @@
             </div>
         </div>
 
-        <!-- 🔥 NEW DESIGN: BULK APPROVAL VIEW -->
         <div id="page-bulk-approval" class="page">
             <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none;">
                 <button class="btn btn-outline" style="padding: 8px 15px; margin-bottom: 15px; border:none; background:#eaedf1; color:#333; width: auto;" onclick="closeBulkView()">⬅ Back</button>
@@ -156,7 +153,6 @@
                 <div id="bulkSummaryInfo" style="margin-bottom: 5px;"></div>
             </div>
 
-            <!-- Sticky Selection Header -->
             <div id="bulkActionHeader" class="bulk-action-bar" style="display: none;">
                 <div style="display: flex; align-items: center; cursor: pointer; font-weight: 700; font-size: 15px; color: #333;" onclick="toggleSelectAllCards()">
                     <div class="custom-cb master-cb" id="masterCb"></div> <span id="masterCbText">Select All</span>
@@ -164,17 +160,14 @@
                 <div id="bulkSelectionCount" style="font-size: 13px; color: var(--primary); font-weight: 800;"></div>
             </div>
 
-            <!-- Card List Container -->
             <div id="bulkListContainer" style="padding-bottom: 100px; padding-top: 15px;"></div>
 
-            <!-- Floating Action Bar (Hidden until selection) -->
             <div id="bulkActionButtons" style="position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); background: white; padding: 12px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); display: none; gap: 12px; z-index: 100; width: 85%; max-width: 350px;">
                 <button class="btn btn-primary" style="background: #24a148; font-size: 14px; padding: 12px;" onclick="submitBulkUpdate('Approved')">✔ Approve</button>
                 <button class="btn btn-primary" style="background: #da1e28; font-size: 14px; padding: 12px;" onclick="submitBulkUpdate('Rejected')">✖ Reject</button>
             </div>
         </div>
 
-        <!-- SETTINGS VIEW -->
         <div id="page-masters" class="page">
             <div class="card">
                 <h3>Users (Access Control)</h3>
