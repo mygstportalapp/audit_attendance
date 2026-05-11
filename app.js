@@ -26,44 +26,40 @@ request.onsuccess = (e) => {
 };
 
 // ==========================================
-// DATE & UI ENGINES
+// DATE & SECURITY HELPERS
 // ==========================================
 
-// Safely parses any ghost dates into local DD-MM-YYYY format
+// 🔥 GLOBAL SECURITY HELPER: Strips accidental spaces and normalizes case
+function isAdminUser() {
+    return currentUser && currentUser.role && currentUser.role.trim().toLowerCase() === 'admin';
+}
+
 function formatDisplayDate(dateStr) {
     if (!dateStr) return "";
     let cleanDate = dateStr.toString().replace("'", "");
-
     if (cleanDate.includes('T')) {
         const d = new Date(cleanDate);
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const year = d.getFullYear();
-        return `${day}-${month}-${year}`;
+        return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
     }
-
     const parts = cleanDate.split('-');
     if (parts.length === 3) {
-        if (parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD -> DD-MM-YYYY
-        if (parts[2].length === 4) return cleanDate; // Already DD-MM-YYYY
+        if (parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        if (parts[2].length === 4) return cleanDate;
     }
     return cleanDate;
 }
 
-// Converts any date format into a mathematical integer (YYYYMMDD) for precise chronological sorting
 function getSortableDate(dateStr) {
     if (!dateStr) return "0";
     let cleanDate = dateStr.toString().replace("'", "");
-
     if (cleanDate.includes('T')) {
         const d = new Date(cleanDate);
         return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
     }
-
     const parts = cleanDate.split('-');
     if (parts.length === 3) {
-        if (parts[0].length === 4) return `${parts[0]}${parts[1]}${parts[2]}`; // YYYY-MM-DD
-        if (parts[2].length === 4) return `${parts[2]}${parts[1]}${parts[0]}`; // DD-MM-YYYY
+        if (parts[0].length === 4) return `${parts[0]}${parts[1]}${parts[2]}`;
+        if (parts[2].length === 4) return `${parts[2]}${parts[1]}${parts[0]}`;
     }
     return "0";
 }
@@ -96,7 +92,7 @@ function checkSession() {
         document.getElementById('app-screen').classList.add('active-screen');
         document.getElementById('userBadge').innerText = `${currentUser.name}`;
 
-        if (currentUser.role === "Admin") {
+        if (isAdminUser()) {
             document.getElementById('nav-masters').style.display = ''; 
             document.getElementById('adminUserFilter').style.display = ''; 
         }
@@ -148,7 +144,7 @@ function handleGoogleLogin(response) {
             document.getElementById('app-screen').classList.add('active-screen');
             document.getElementById('userBadge').innerText = `${currentUser.name}`;
 
-            if (currentUser.role === "Admin") {
+            if (isAdminUser()) {
                 document.getElementById('nav-masters').style.display = ''; 
                 document.getElementById('adminUserFilter').style.display = ''; 
             }
@@ -376,15 +372,10 @@ async function autoSync() {
                 const cloudIds = new Set(fetchData.data.map(r => r.id.toString()));
 
                 localRecords.forEach(r => {
-                    if (r.isSynced && !cloudIds.has(r.id.toString())) {
-                        store.delete(r.id);
-                    }
+                    if (r.isSynced && !cloudIds.has(r.id.toString())) store.delete(r.id);
                 });
 
-                fetchData.data.forEach(record => { 
-                    record.isSynced = true; 
-                    store.put(record); 
-                });
+                fetchData.data.forEach(record => { record.isSynced = true; store.put(record); });
             };
             
             if (fetchData.masters) syncMastersToLocal(fetchData.masters);
@@ -424,7 +415,7 @@ function renderReport() {
     db.transaction("Attendance", "readonly").objectStore("Attendance").getAll().onsuccess = (e) => {
         let records = e.target.result;
         
-        if (currentUser.role !== "Admin") records = records.filter(r => r.userName === currentUser.name);
+        if (!isAdminUser()) records = records.filter(r => r.userName === currentUser.name);
         else if (selectedUser !== "ALL") records = records.filter(r => r.userName === selectedUser);
         
         if (selectedWork !== "ALL") records = records.filter(r => r.workName === selectedWork);
@@ -440,7 +431,7 @@ function renderReport() {
 
         const groups = {};
         records.forEach(r => {
-            const key = currentUser.role === 'Admin' ? `${r.userName}_${r.workName}` : `${r.workName}`;
+            const key = isAdminUser() ? `${r.userName}_${r.workName}` : `${r.workName}`;
             if(!groups[key]) {
                 groups[key] = {
                     userName: r.userName, workName: r.workName,
@@ -467,7 +458,7 @@ function renderReport() {
             else if(g.rejectedCount > 0) statusBadge = `<span class="badge bg-rejected">Has Rejected</span>`;
             else statusBadge = `<span class="badge bg-approved">All Approved</span>`;
 
-            const title = currentUser.role === 'Admin' ? `<b style="color:var(--primary); font-size:14px;">${g.userName}</b><br><span style="font-size:12px; color:#555;">${g.workName}</span>` : `<b style="color:var(--primary); font-size:14px;">${g.workName}</b>`;
+            const title = isAdminUser() ? `<b style="color:var(--primary); font-size:14px;">${g.userName}</b><br><span style="font-size:12px; color:#555;">${g.workName}</span>` : `<b style="color:var(--primary); font-size:14px;">${g.workName}</b>`;
 
             html += `
             <tr style="cursor: pointer; background: #ffffff; border-bottom: 1px solid #eee; border-top: 4px solid var(--bg);" onclick="openBulkView('${g.userName}', '${g.workName}')">
@@ -489,18 +480,29 @@ function closeBulkView() {
     switchPage('report', document.getElementById('nav-report'));
 }
 
+// 🔥 GLOBAL CHECKBOX HELPERS
+window.toggleSelectAll = function(source) {
+    const checkboxes = document.querySelectorAll('.bulk-cb');
+    checkboxes.forEach(cb => cb.checked = source.checked);
+};
+
+window.toggleRowCheckbox = function(rowElement, event) {
+    if (event.target.tagName.toLowerCase() === 'input') return;
+    const cb = rowElement.querySelector('.bulk-cb');
+    if (cb) cb.checked = !cb.checked;
+};
+
 function openBulkView(userName, workName) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
     document.getElementById('page-bulk-approval').classList.add('active-page');
     document.getElementById('headerTitle').innerText = 'Review Details';
 
-    const titleHtml = currentUser.role === 'Admin' ? `<span style="color:var(--primary);">${userName}</span> <br><span style="font-size:13px; color:#666;">${workName}</span>` : `<span style="color:var(--primary);">${workName}</span>`;
+    const titleHtml = isAdminUser() ? `<span style="color:var(--primary);">${userName}</span> <br><span style="font-size:13px; color:#666;">${workName}</span>` : `<span style="color:var(--primary);">${workName}</span>`;
     document.getElementById('bulkViewTitle').innerHTML = titleHtml;
 
     db.transaction("Attendance", "readonly").objectStore("Attendance").getAll().onsuccess = (e) => {
         let records = e.target.result.filter(r => r.userName === userName && r.workName === workName);
 
-        // 🔥 SORT CHRONOLOGICALLY
         records.sort((a, b) => {
             const dA = parseInt(getSortableDate(a.date)) || 0;
             const dB = parseInt(getSortableDate(b.date)) || 0;
@@ -508,7 +510,7 @@ function openBulkView(userName, workName) {
         });
 
         const hasPending = records.some(r => r.status === 'Pending');
-        const showActions = currentUser.role === 'Admin' && hasPending;
+        const showActions = isAdminUser() && hasPending;
         document.getElementById('bulkActionButtons').style.display = showActions ? 'flex' : 'none';
 
         const thead = document.querySelector('#bulkTable thead');
@@ -524,10 +526,9 @@ function openBulkView(userName, workName) {
             const badgeClass = r.status === 'Approved' ? 'bg-approved' : (r.status === 'Rejected' ? 'bg-rejected' : 'bg-pending');
             const syncIcon = r.isSynced ? `<span style="font-size:10px; opacity:0.6;" title="Synced">☁️</span>` : `<span style="font-size:10px;" title="Pending Sync">⏳</span>`;
 
-            // 🔥 UNIVERSAL DATE FIX applied here
             let displayDate = formatDisplayDate(r.date);
 
-            let rowHtml = `<tr style="border-bottom: 1px solid #f0f0f0;">`;
+            let rowHtml = `<tr style="border-bottom: 1px solid #f0f0f0; ${showActions ? 'cursor: pointer;' : ''}" ${showActions ? 'onclick="toggleRowCheckbox(this, event)"' : ''}>`;
 
             if (showActions) {
                 const checkboxHtml = r.status === 'Pending' ? `<input type="checkbox" class="bulk-cb" value="${r.id}">` : ``;
@@ -549,12 +550,9 @@ function openBulkView(userName, workName) {
     };
 }
 
-function toggleSelectAll(source) {
-    const checkboxes = document.querySelectorAll('.bulk-cb');
-    checkboxes.forEach(cb => cb.checked = source.checked);
-}
-
 function submitBulkUpdate(newStatus) {
+    if (!isAdminUser()) return showToast("Unauthorized action.");
+    
     const checkedBoxes = document.querySelectorAll('.bulk-cb:checked');
     if(checkedBoxes.length === 0) return showToast("Select at least one record to update.");
 
