@@ -26,33 +26,45 @@ request.onsuccess = (e) => {
 };
 
 // ==========================================
-// DATE & UI ENGINE
+// DATE & UI ENGINES
 // ==========================================
 
-// Converts raw saved strings or old ISO strings directly to local DD-MM-YYYY format
+// Safely parses any ghost dates into local DD-MM-YYYY format
 function formatDisplayDate(dateStr) {
     if (!dateStr) return "";
-    if (dateStr.includes('T')) {
-        const d = new Date(dateStr);
+    let cleanDate = dateStr.toString().replace("'", "");
+
+    if (cleanDate.includes('T')) {
+        const d = new Date(cleanDate);
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
         return `${day}-${month}-${year}`;
     }
-    const parts = dateStr.toString().replace("'", "").split('-');
-    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    return dateStr;
+
+    const parts = cleanDate.split('-');
+    if (parts.length === 3) {
+        if (parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD -> DD-MM-YYYY
+        if (parts[2].length === 4) return cleanDate; // Already DD-MM-YYYY
+    }
+    return cleanDate;
 }
 
-// Converts any date format into a mathematical integer (YYYYMMDD) for perfect chronological sorting
+// Converts any date format into a mathematical integer (YYYYMMDD) for precise chronological sorting
 function getSortableDate(dateStr) {
     if (!dateStr) return "0";
-    if (dateStr.includes('T')) {
-        const d = new Date(dateStr);
+    let cleanDate = dateStr.toString().replace("'", "");
+
+    if (cleanDate.includes('T')) {
+        const d = new Date(cleanDate);
         return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
     }
-    const parts = dateStr.toString().replace("'", "").split('-');
-    if (parts.length === 3) return `${parts[0]}${parts[1]}${parts[2]}`;
+
+    const parts = cleanDate.split('-');
+    if (parts.length === 3) {
+        if (parts[0].length === 4) return `${parts[0]}${parts[1]}${parts[2]}`; // YYYY-MM-DD
+        if (parts[2].length === 4) return `${parts[2]}${parts[1]}${parts[0]}`; // DD-MM-YYYY
+    }
     return "0";
 }
 
@@ -441,7 +453,6 @@ function renderReport() {
             else if(r.status === 'Rejected') groups[key].rejectedCount++;
         });
 
-        // 🔥 SORT GROUPS: The job with the most recent entry bubbles to the top
         const groupsArray = Object.values(groups);
         groupsArray.sort((a, b) => {
             const maxA = Math.max(...a.records.map(r => parseInt(getSortableDate(r.date)) || 0));
@@ -489,7 +500,7 @@ function openBulkView(userName, workName) {
     db.transaction("Attendance", "readonly").objectStore("Attendance").getAll().onsuccess = (e) => {
         let records = e.target.result.filter(r => r.userName === userName && r.workName === workName);
 
-        // 🔥 SORT ROWS: Chronological (Newest Dates First)
+        // 🔥 SORT CHRONOLOGICALLY
         records.sort((a, b) => {
             const dA = parseInt(getSortableDate(a.date)) || 0;
             const dB = parseInt(getSortableDate(b.date)) || 0;
@@ -513,6 +524,7 @@ function openBulkView(userName, workName) {
             const badgeClass = r.status === 'Approved' ? 'bg-approved' : (r.status === 'Rejected' ? 'bg-rejected' : 'bg-pending');
             const syncIcon = r.isSynced ? `<span style="font-size:10px; opacity:0.6;" title="Synced">☁️</span>` : `<span style="font-size:10px;" title="Pending Sync">⏳</span>`;
 
+            // 🔥 UNIVERSAL DATE FIX applied here
             let displayDate = formatDisplayDate(r.date);
 
             let rowHtml = `<tr style="border-bottom: 1px solid #f0f0f0;">`;
