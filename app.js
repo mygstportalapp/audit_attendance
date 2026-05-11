@@ -26,8 +26,36 @@ request.onsuccess = (e) => {
 };
 
 // ==========================================
-// GLOBAL UI HELPERS
+// DATE & UI ENGINE
 // ==========================================
+
+// Converts raw saved strings or old ISO strings directly to local DD-MM-YYYY format
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return "";
+    if (dateStr.includes('T')) {
+        const d = new Date(dateStr);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
+    const parts = dateStr.toString().replace("'", "").split('-');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return dateStr;
+}
+
+// Converts any date format into a mathematical integer (YYYYMMDD) for perfect chronological sorting
+function getSortableDate(dateStr) {
+    if (!dateStr) return "0";
+    if (dateStr.includes('T')) {
+        const d = new Date(dateStr);
+        return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    }
+    const parts = dateStr.toString().replace("'", "").split('-');
+    if (parts.length === 3) return `${parts[0]}${parts[1]}${parts[2]}`;
+    return "0";
+}
+
 let toastTimeout;
 function showToast(message) {
     const toast = document.getElementById('syncToast');
@@ -293,7 +321,7 @@ document.getElementById('auditForm').addEventListener('submit', (e) => {
 });
 
 // ==========================================
-// 🔥 TWO-WAY BACKGROUND AUTO-SYNC ENGINE
+// TWO-WAY BACKGROUND AUTO-SYNC ENGINE
 // ==========================================
 let syncInterval = null;
 let isSyncing = false;
@@ -311,7 +339,6 @@ async function autoSync() {
     updateSyncUI("Syncing", "🟡 Syncing...");
 
     try {
-        // 1. PUSH Pending offline records to cloud
         const pendingRecords = await new Promise((resolve) => {
             db.transaction("Attendance", "readonly").objectStore("Attendance").getAll().onsuccess = (e) => resolve(e.target.result.filter(r => !r.isSynced));
         });
@@ -325,7 +352,6 @@ async function autoSync() {
             }
         }
 
-        // 2. FETCH Latest Cloud Data & DIFF MATCH
         const fetchRes = await fetch(googleScriptURL, { method: 'POST', body: JSON.stringify({ action: "fetch_updates", email: currentUser.email }) });
         const fetchData = await fetchRes.json();
 
@@ -337,14 +363,12 @@ async function autoSync() {
                 const localRecords = e.target.result;
                 const cloudIds = new Set(fetchData.data.map(r => r.id.toString()));
 
-                // Step A: If local record is marked synced but is missing from Cloud (Manual Deletion in Sheet), delete it locally.
                 localRecords.forEach(r => {
                     if (r.isSynced && !cloudIds.has(r.id.toString())) {
                         store.delete(r.id);
                     }
                 });
 
-                // Step B: Add or Update records sent down from the cloud
                 fetchData.data.forEach(record => { 
                     record.isSynced = true; 
                     store.put(record); 
@@ -355,7 +379,6 @@ async function autoSync() {
             
             tx.oncomplete = () => {
                 if(document.getElementById('page-report').classList.contains('active-page')) renderReport(); 
-                // Auto-refresh bulk view if open
                 if(document.getElementById('page-bulk-approval').classList.contains('active-page')) {
                     const titleText = document.getElementById('bulkViewTitle').innerText;
                     if(titleText) {
@@ -366,9 +389,7 @@ async function autoSync() {
                 updateSyncUI("Success", "🟢 Auto-Sync Active");
             };
         }
-    } catch (error) { 
-        updateSyncUI("Error", "🔴 Sync Failed"); 
-    } 
+    } catch (error) { updateSyncUI("Error", "🔴 Sync Failed"); } 
     finally { isSyncing = false; }
 }
 
@@ -411,16 +432,25 @@ function renderReport() {
             if(!groups[key]) {
                 groups[key] = {
                     userName: r.userName, workName: r.workName,
-                    totalMD: 0, pendingCount: 0, rejectedCount: 0
+                    records: [], totalMD: 0, pendingCount: 0, rejectedCount: 0
                 };
             }
+            groups[key].records.push(r);
             groups[key].totalMD += parseInt(r.manDay);
             if(r.status === 'Pending') groups[key].pendingCount++;
             else if(r.status === 'Rejected') groups[key].rejectedCount++;
         });
 
+        // 🔥 SORT GROUPS: The job with the most recent entry bubbles to the top
+        const groupsArray = Object.values(groups);
+        groupsArray.sort((a, b) => {
+            const maxA = Math.max(...a.records.map(r => parseInt(getSortableDate(r.date)) || 0));
+            const maxB = Math.max(...b.records.map(r => parseInt(getSortableDate(r.date)) || 0));
+            return maxB - maxA;
+        });
+
         let html = '';
-        Object.values(groups).forEach(g => {
+        groupsArray.forEach(g => {
             let statusBadge = '';
             if(g.pendingCount > 0) statusBadge = `<span class="badge bg-pending">${g.pendingCount} Pending</span>`;
             else if(g.rejectedCount > 0) statusBadge = `<span class="badge bg-rejected">Has Rejected</span>`;
@@ -459,9 +489,11 @@ function openBulkView(userName, workName) {
     db.transaction("Attendance", "readonly").objectStore("Attendance").getAll().onsuccess = (e) => {
         let records = e.target.result.filter(r => r.userName === userName && r.workName === workName);
 
+        // 🔥 SORT ROWS: Chronological (Newest Dates First)
         records.sort((a, b) => {
-            let da = a.date || ""; let db = b.date || "";
-            return db.localeCompare(da);
+            const dA = parseInt(getSortableDate(a.date)) || 0;
+            const dB = parseInt(getSortableDate(b.date)) || 0;
+            return dB - dA;
         });
 
         const hasPending = records.some(r => r.status === 'Pending');
@@ -481,12 +513,7 @@ function openBulkView(userName, workName) {
             const badgeClass = r.status === 'Approved' ? 'bg-approved' : (r.status === 'Rejected' ? 'bg-rejected' : 'bg-pending');
             const syncIcon = r.isSynced ? `<span style="font-size:10px; opacity:0.6;" title="Synced">☁️</span>` : `<span style="font-size:10px;" title="Pending Sync">⏳</span>`;
 
-            let displayDate = r.date;
-            if (r.date) {
-                const cleanDate = r.date.toString().split('T')[0];
-                const dateParts = cleanDate.split('-');
-                if (dateParts.length === 3) displayDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-            }
+            let displayDate = formatDisplayDate(r.date);
 
             let rowHtml = `<tr style="border-bottom: 1px solid #f0f0f0;">`;
 
