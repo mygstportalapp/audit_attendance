@@ -13,6 +13,13 @@ let currentBulkWork = null;
 const dbName = "AuditAppDB_Final_v7"; 
 let db;
 
+// 🔥 Enforce Date Limits on Page Load
+document.addEventListener("DOMContentLoaded", () => {
+    const today = new Date();
+    const todayStr = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    document.getElementById('auditDate').max = todayStr;
+});
+
 const request = indexedDB.open(dbName, 1);
 request.onupgradeneeded = (e) => {
     db = e.target.result;
@@ -209,11 +216,34 @@ function loadAllMasters() {
     };
 
     db.transaction("WorkMaster", "readonly").objectStore("WorkMaster").getAll().onsuccess = (e) => {
-        const wOpts = `<option value="">Select Work</option>` + e.target.result.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
-        document.getElementById('workSelect').innerHTML = wOpts;
-        document.getElementById('reportWorkSelect').innerHTML = `<option value="ALL">-- All Audits --</option>` + e.target.result.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+        const works = e.target.result;
+        
+        // 🔥 FILTER: Only show OPEN jobs in the Entry Dropdown
+        const openWorks = works.filter(w => w.status !== 'Completed');
+        document.getElementById('workSelect').innerHTML = `<option value="">Select Work</option>` + openWorks.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+        
+        // Report Dropdown still shows all works
+        document.getElementById('reportWorkSelect').innerHTML = `<option value="ALL">-- All Audits --</option>` + works.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+        
         if(currentSelections.work) document.getElementById('workSelect').value = currentSelections.work;
         if(currentSelections.repWork) document.getElementById('reportWorkSelect').value = currentSelections.repWork;
+
+        // 🔥 NEW: Render Work Control Panel for Admins
+        const wTbody = document.querySelector('#masterWorksTable tbody');
+        if(wTbody) {
+            wTbody.innerHTML = works.map(w => {
+                const isCompleted = w.status === 'Completed';
+                const badgeClass = isCompleted ? 'bg-rejected' : 'bg-approved'; 
+                const actionBtn = isCompleted
+                    ? `<button class="btn btn-outline" style="padding: 6px 12px; font-size:11px;" onclick="toggleWorkStatus('${w.name}', 'Open')">Re-Open</button>`
+                    : `<button class="btn btn-outline" style="padding: 6px 12px; font-size:11px; border-color:#da1e28; color:#da1e28;" onclick="toggleWorkStatus('${w.name}', 'Completed')">Close Job</button>`;
+                return `<tr>
+                    <td style="padding-left:12px;"><b>${w.name}</b></td>
+                    <td style="text-align:center;"><span class="badge ${badgeClass}">${w.status || 'Open'}</span></td>
+                    <td style="text-align:right; padding-right:12px;">${actionBtn}</td>
+                </tr>`;
+            }).join('');
+        }
     };
 
     db.transaction("UserMaster", "readonly").objectStore("UserMaster").getAll().onsuccess = (e) => {
@@ -241,7 +271,7 @@ const visit2Group = document.getElementById('visit2Group');
 visitType.addEventListener('change', (e) => {
     if (e.target.value === 'split') {
         visit2Group.style.display = 'block';
-        document.getElementById('lblVisit1').innerText = "Morning Society & Branch";
+        document.getElementById('lblVisit1').innerText = "Society & Branch 1";
         document.getElementById('society2').required = true; document.getElementById('branch2').required = true;
     } else {
         visit2Group.style.display = 'none';
@@ -264,7 +294,7 @@ document.getElementById('society2').addEventListener('change', () => cascadeBran
 // MASTER DATA MANAGEMENT
 // ==========================================
 function pushMasterToCloud(type, arrayData, successMsg, callback) {
-    showLoading("Saving Master Data...");
+    showLoading("Saving...");
     fetch(googleScriptURL, { method: 'POST', body: JSON.stringify({ action: "add_master", type: type, email: currentUser.email, data: arrayData }) })
     .then(r => r.json()).then(data => {
         hideLoading();
@@ -279,31 +309,57 @@ function addUser() {
     if (!name || !email) return showToast("Provide Name and Gmail.");
     pushMasterToCloud("Users", [email, name, role], `${name} Registered!`, () => { document.getElementById('newUserName').value = ""; document.getElementById('newUserEmail').value = ""; });
 }
+
+// 🔥 Adjusted to push "Open" as default status
 function addMaster(store, id1) {
     const val = document.getElementById(id1).value.trim();
     if (!val) return;
-    pushMasterToCloud("Works", [val], "Work Added!", () => { document.getElementById(id1).value = ""; });
+    pushMasterToCloud("Works", [val, "Open"], "Work Added!", () => { document.getElementById(id1).value = ""; });
 }
+
 function addSociety() {
     const name = document.getElementById('newSocName').value.trim();
     const code = document.getElementById('newSocCode').value.trim().toUpperCase();
     if (!name || !code) return showToast("Provide Name and Code.");
     pushMasterToCloud("Societies", [name, code], "Society Added!", () => { document.getElementById('newSocName').value = ""; document.getElementById('newSocCode').value = ""; });
 }
+
 function addBranch() {
     const socCode = document.getElementById('masterSocSelect').value;
     const branchName = document.getElementById('newBranch').value.trim();
     if (!socCode || !branchName) return showToast("Select Society and provide Branch.");
     pushMasterToCloud("Branches", [socCode, branchName], "Branch Added!", () => { document.getElementById('newBranch').value = ""; });
-                }
-        // ==========================================
+}
+
+// 🔥 NEW: Toggle Job Status to stop attendance
+function toggleWorkStatus(workName, newStatus) {
+    if (!window.confirm(`Mark job '${workName}' as ${newStatus}?`)) return;
+    showLoading("Updating Job...");
+    fetch(googleScriptURL, { method: 'POST', body: JSON.stringify({ action: "update_work_status", email: currentUser.email, workName: workName, status: newStatus }) })
+    .then(r => r.json()).then(data => {
+        if (data.status === "success") {
+            showToast(`Job marked ${newStatus}`);
+            autoSync(); // Pulls the fresh works list
+        } else {
+            hideLoading(); showToast("Error: " + data.message);
+        }
+    }).catch(() => { hideLoading(); showToast("Network Error"); });
+}
+
+// ==========================================
 // SAVE ATTENDANCE LOCALLY & SYNC
 // ==========================================
 document.getElementById('auditForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    
+    // Strict Future Date Validation Backup
+    const dateVal = document.getElementById('auditDate').value;
+    const today = new Date();
+    const todayStr = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    if(dateVal > todayStr) return showToast("Cannot select future date!");
+
     showLoading("Saving Record...");
     
-    const dateVal = document.getElementById('auditDate').value;
     const work = document.getElementById('workSelect').value;
     const sType = visitType.value;
     const s1Code = document.getElementById('society1').value;
@@ -642,5 +698,4 @@ if ('serviceWorker' in navigator) {
             console.log('Service Worker registration failed: ', err);
         });
     });
-    }
-                                          
+}
