@@ -434,12 +434,31 @@ async function autoSync() {
     finally { isSyncing = false; }
 }
 
+// ==========================================
+// UPDATE SYNC UI IN HEADER
+// ==========================================
 function updateSyncUI(state, statusText) {
-    const statusDiv = document.getElementById('syncStatusText');
+    const icon = document.getElementById('syncStatusIcon');
     const timeDiv = document.getElementById('lastSyncTime');
-    if (statusDiv) statusDiv.innerText = statusText;
-    if (state === "Success") {
-        if (timeDiv) timeDiv.innerText = "Last Synced: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    if (state === "Syncing") {
+        if (icon) icon.innerText = "🟡";
+        if (timeDiv) { 
+            timeDiv.innerText = "Syncing with cloud..."; 
+            timeDiv.style.color = "#d4a100"; 
+        }
+    } else if (state === "Success") {
+        if (icon) icon.innerText = "🟢";
+        if (timeDiv) { 
+            timeDiv.innerText = "Synced: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+            timeDiv.style.color = "#24a148"; 
+        }
+    } else {
+        if (icon) icon.innerText = "🔴";
+        if (timeDiv) { 
+            timeDiv.innerText = "Offline / Sync Failed"; 
+            timeDiv.style.color = "#da1e28"; 
+        }
     }
 }
 
