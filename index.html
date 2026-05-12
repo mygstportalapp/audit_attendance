@@ -7,7 +7,7 @@
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
-    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=Audit&background=0f62fe&color=fff&size=512">
+    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=Audit\nTrack&background=0f62fe&color=fff&size=512">
 
     <script src="const.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -22,9 +22,15 @@
         .login-container { margin: auto; padding: 40px 20px; background: var(--card); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 90%; max-width: 400px; text-align: center; }
         .login-container h2 { margin-top: 0; color: var(--primary); font-size: 24px; }
         
-        .header { background: var(--card); padding: 16px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; position: sticky; top: 0; z-index: 30;}
+        /* 🔥 UPDATED: Header is now a flex column to hold the global sync bar */
+        .header { background: var(--card); padding: 12px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; position: sticky; top: 0; z-index: 30;}
+        .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 4px; }
+        .header-title { font-weight: 800; font-size: 18px; color: var(--text); }
         .user-badge { font-size: 12px; background: #e0e8ff; color: var(--primary); padding: 6px 12px; border-radius: 20px; font-weight: 600;}
         .logout-btn { background: none; border: none; color: #da1e28; font-weight: bold; font-size: 13px; margin-left: 10px; cursor: pointer; padding: 5px;}
+        
+        /* 🔥 NEW: Global Sync Tracker styles */
+        .global-sync { font-size: 11px; font-weight: 700; color: #888; display: flex; align-items: center; gap: 5px; }
         
         .page { display: none; padding: 15px; padding-bottom: 100px; overflow-y: auto; flex-grow: 1;}
         .active-page { display: block; }
@@ -66,7 +72,6 @@
         .summary-box span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
         .summary-box div { font-size: 30px; font-weight: 800; margin-top: 5px; }
         
-        .sync-tracker { background: #fff; padding: 16px; border-radius: 16px; border: 1px solid var(--border); margin-top: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);}
         .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 30px; font-size: 13px; font-weight: bold; display: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 
         .table-container { border: 1px solid var(--border); border-radius: 12px; background: white; overflow: hidden; }
@@ -85,7 +90,6 @@
         .bulk-card.selected .custom-cb::after, .master-cb.selected::after { content: "✔"; color: white; font-size: 14px; font-weight: bold; }
         .bulk-action-bar { background: white; padding: 12px 15px; border: 1px solid var(--border); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; margin-bottom: 0px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 5;}
         
-        /* 🔥 NEW TABS FOR MASTERS PAGE */
         .master-tabs { display: flex; overflow-x: auto; gap: 8px; padding: 15px; margin: -15px -15px 15px -15px; background: var(--bg); position: sticky; top: -15px; z-index: 10; white-space: nowrap; scrollbar-width: none; border-bottom: 1px solid #eaedf1;}
         .master-tabs::-webkit-scrollbar { display: none; }
         .master-tab { padding: 10px 18px; font-size: 13px; font-weight: 800; color: #555; background: #e8ebf1; border-radius: 30px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px;}
@@ -110,12 +114,17 @@
     </div>
 
     <div id="app-screen">
+        <!-- 🔥 NEW GLOBAL HEADER WITH SYNC BAR -->
         <div class="header">
-            <span id="headerTitle">Attendance</span>
-            <div><span class="user-badge" id="userBadge">User</span><button class="logout-btn" onclick="logout()">Logout</button></div>
+            <div class="header-top">
+                <span class="header-title" id="headerTitle">Attendance</span>
+                <div><span class="user-badge" id="userBadge">User</span><button class="logout-btn" onclick="logout()">Logout</button></div>
+            </div>
+            <div class="global-sync">
+                <span id="syncStatusIcon">🟡</span> <span id="lastSyncTime">Checking sync status...</span>
+            </div>
         </div>
 
-        <!-- ENTRY PAGE -->
         <div id="page-attendance" class="page active-page">
             <div class="card">
                 <form id="auditForm">
@@ -136,7 +145,6 @@
             </div>
         </div>
 
-        <!-- DASHBOARD PAGE -->
         <div id="page-report" class="page">
             <div style="position: sticky; top: -15px; background: var(--bg); z-index: 15; margin: -15px -15px 15px -15px; padding: 15px 15px 0 15px;">
                 <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none; box-shadow: none;">
@@ -163,11 +171,8 @@
                     <tbody></tbody>
                 </table>
             </div>
-            
-            <div class="sync-tracker" style="margin-top: 20px;"><div id="syncStatusText" style="font-size: 14px; font-weight: 800; color: #0f62fe;">🟢 Auto-Sync Active</div><div id="lastSyncTime" style="font-size: 12px; color: #888; margin-top: 6px;">Waiting for first sync...</div></div>
         </div>
 
-        <!-- BULK APPROVAL -->
         <div id="page-bulk-approval" class="page">
             <div style="position: sticky; top: -15px; background: var(--bg); z-index: 15; margin: -15px -15px 10px -15px; padding: 15px 15px 0 15px;">
                 <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none; box-shadow: none;">
@@ -193,7 +198,6 @@
             </div>
         </div>
 
-        <!-- 🔥 NEW: TABBED MASTERS PAGE -->
         <div id="page-masters" class="page">
             
             <div class="master-tabs">
@@ -203,7 +207,6 @@
                 <div class="master-tab" onclick="switchMasterTab('users', this)">👥 Users</div>
             </div>
 
-            <!-- WORKS TAB -->
             <div id="master-sec-works" class="master-section active">
                 <div class="card" style="border: 2px solid var(--primary);">
                     <h3 style="color: var(--primary);">Manage Jobs</h3>
@@ -220,7 +223,6 @@
                 </div>
             </div>
 
-            <!-- SOCIETIES TAB -->
             <div id="master-sec-societies" class="master-section">
                 <div class="card">
                     <h3>Add Society</h3>
@@ -230,7 +232,6 @@
                 </div>
             </div>
 
-            <!-- BRANCHES TAB -->
             <div id="master-sec-branches" class="master-section">
                 <div class="card">
                     <h3>Add Branch</h3>
@@ -240,7 +241,6 @@
                 </div>
             </div>
 
-            <!-- USERS TAB -->
             <div id="master-sec-users" class="master-section">
                 <div class="card">
                     <h3>Access Control (Users)</h3>
