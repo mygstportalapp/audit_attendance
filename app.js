@@ -359,4 +359,4 @@ function submitBulkUpdate(newStatus) {
     }).catch((err) => { console.error("Bulk Update Error:", err); hideLoading(); showToast("Network/CORS Error."); });
 }
 
-if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => { console.log('SW registration failed'); }); }); }
+//if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => { console.log('SW registration failed'); }); }); }
