@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Audit Work Tracker</title>
+    <title>Enterprise Audit Portal</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
-    <link rel="apple-touch-icon" href="https://placehold.co/512x512/0f62fe/ffffff.png?text=Audit\nTrack&font=Montserrat">
+    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=Audit&background=0f62fe&color=fff&size=512">
 
     <script src="const.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -85,8 +85,14 @@
         .bulk-card.selected .custom-cb::after, .master-cb.selected::after { content: "✔"; color: white; font-size: 14px; font-weight: bold; }
         .bulk-action-bar { background: white; padding: 12px 15px; border: 1px solid var(--border); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; margin-bottom: 0px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 5;}
         
-        /* 🔥 NEW MASTERS GRID */
-        .masters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+        /* 🔥 NEW TABS FOR MASTERS PAGE */
+        .master-tabs { display: flex; overflow-x: auto; gap: 8px; padding: 15px; margin: -15px -15px 15px -15px; background: var(--bg); position: sticky; top: -15px; z-index: 10; white-space: nowrap; scrollbar-width: none; border-bottom: 1px solid #eaedf1;}
+        .master-tabs::-webkit-scrollbar { display: none; }
+        .master-tab { padding: 10px 18px; font-size: 13px; font-weight: 800; color: #555; background: #e8ebf1; border-radius: 30px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px;}
+        .master-tab.active { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(15,98,254,0.3); }
+        .master-section { display: none; }
+        .master-section.active { display: block; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -95,7 +101,7 @@
 
     <div id="login-screen" class="active-screen">
         <div class="login-container">
-            <h2>Audit Track</h2>
+            <h2>Audit Portal</h2>
             <p style="font-size: 15px; color: #666; margin-bottom: 25px;">Sign in with your authorized Google account</p>
             <div id="g_id_onload" data-client_id="1021978161049-m0qcli73053amlqo773e9irqkharfved.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
             <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="pill" data-logo_alignment="center" style="display: flex; justify-content: center;"></div>
@@ -109,10 +115,10 @@
             <div><span class="user-badge" id="userBadge">User</span><button class="logout-btn" onclick="logout()">Logout</button></div>
         </div>
 
+        <!-- ENTRY PAGE -->
         <div id="page-attendance" class="page active-page">
             <div class="card">
                 <form id="auditForm">
-                    <!-- Dynamic Date Max is applied in JS -->
                     <div class="row">
                         <div class="form-group"><label>Audit Date</label><input type="date" id="auditDate" required></div>
                         <div class="form-group"><label>Visit Type</label><select id="visitType" required><option value="full">Full Day</option><option value="split">Split Day</option></select></div>
@@ -130,10 +136,11 @@
             </div>
         </div>
 
+        <!-- DASHBOARD PAGE -->
         <div id="page-report" class="page">
             <div style="position: sticky; top: -15px; background: var(--bg); z-index: 15; margin: -15px -15px 15px -15px; padding: 15px 15px 0 15px;">
                 <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none; box-shadow: none;">
-                    <h3 style="margin-bottom: 10px;">Dashboard</h3>
+                    <h3 style="margin-bottom: 10px;">Audit Dashboard</h3>
                     <div class="row" style="margin-bottom: 15px;">
                         <div><select id="reportWorkSelect" onchange="renderReport()"><option value="ALL">-- All Audits --</option></select></div>
                         <div id="adminUserFilter" style="display: none;"><select id="reportUserSelect" onchange="renderReport()"><option value="ALL">-- All Users --</option></select></div>
@@ -160,6 +167,7 @@
             <div class="sync-tracker" style="margin-top: 20px;"><div id="syncStatusText" style="font-size: 14px; font-weight: 800; color: #0f62fe;">🟢 Auto-Sync Active</div><div id="lastSyncTime" style="font-size: 12px; color: #888; margin-top: 6px;">Waiting for first sync...</div></div>
         </div>
 
+        <!-- BULK APPROVAL -->
         <div id="page-bulk-approval" class="page">
             <div style="position: sticky; top: -15px; background: var(--bg); z-index: 15; margin: -15px -15px 10px -15px; padding: 15px 15px 0 15px;">
                 <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none; box-shadow: none;">
@@ -185,43 +193,65 @@
             </div>
         </div>
 
+        <!-- 🔥 NEW: TABBED MASTERS PAGE -->
         <div id="page-masters" class="page">
             
-            <!-- 🔥 NEW: Job Control Panel -->
-            <div class="card" style="border: 2px solid var(--primary);">
-                <h3 style="color: var(--primary);">Manage Jobs (Works)</h3>
-                <div class="row" style="margin-bottom: 15px;">
-                    <div style="flex: 2;"><input type="text" id="newWork" placeholder="New Work Name"></div>
-                    <div style="flex: 1;"><button class="btn btn-primary" style="padding: 14px;" onclick="addMaster('WorkMaster', 'newWork')">Add</button></div>
-                </div>
-                <div class="table-container" style="max-height: 250px;">
-                    <table id="masterWorksTable">
-                        <thead style="background: white;"><tr><th>Work</th><th>Status</th><th>Toggle</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
+            <div class="master-tabs">
+                <div class="master-tab active" onclick="switchMasterTab('works', this)">💼 Jobs & Works</div>
+                <div class="master-tab" onclick="switchMasterTab('societies', this)">🏛 Societies</div>
+                <div class="master-tab" onclick="switchMasterTab('branches', this)">🏢 Branches</div>
+                <div class="master-tab" onclick="switchMasterTab('users', this)">👥 Users</div>
+            </div>
+
+            <!-- WORKS TAB -->
+            <div id="master-sec-works" class="master-section active">
+                <div class="card" style="border: 2px solid var(--primary);">
+                    <h3 style="color: var(--primary);">Manage Jobs</h3>
+                    <div class="row" style="margin-bottom: 15px;">
+                        <div style="flex: 2;"><input type="text" id="newWork" placeholder="New Work Name"></div>
+                        <div style="flex: 1;"><button class="btn btn-primary" style="padding: 14px;" onclick="addMaster('WorkMaster', 'newWork')">Add</button></div>
+                    </div>
+                    <div class="table-container">
+                        <table id="masterWorksTable">
+                            <thead style="background: white;"><tr><th>Work</th><th>Status</th><th>Toggle</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <div class="masters-grid">
+            <!-- SOCIETIES TAB -->
+            <div id="master-sec-societies" class="master-section">
                 <div class="card">
-                    <h3>Societies</h3>
-                    <div class="row" style="margin-bottom: 10px;"><input type="text" id="newSocName" placeholder="Full Name"><input type="text" id="newSocCode" placeholder="Code" style="width: 40%;"></div>
-                    <button class="btn btn-outline" onclick="addSociety()">Add Society</button>
+                    <h3>Add Society</h3>
+                    <div class="form-group"><input type="text" id="newSocName" placeholder="Full Name (e.g. Navachetana)"></div>
+                    <div class="form-group"><input type="text" id="newSocCode" placeholder="Code (e.g. NC)"></div>
+                    <button class="btn btn-outline" onclick="addSociety()">Save Society</button>
                 </div>
+            </div>
+
+            <!-- BRANCHES TAB -->
+            <div id="master-sec-branches" class="master-section">
                 <div class="card">
-                    <h3>Branches</h3>
-                    <div class="form-group"><select id="masterSocSelect"><option value="">Select Society</option></select></div>
+                    <h3>Add Branch</h3>
+                    <div class="form-group"><select id="masterSocSelect"><option value="">Select Parent Society</option></select></div>
                     <div class="form-group"><input type="text" id="newBranch" placeholder="Branch Name"></div>
-                    <button class="btn btn-outline" onclick="addBranch()">Add Branch</button>
+                    <button class="btn btn-outline" onclick="addBranch()">Save Branch</button>
                 </div>
+            </div>
+
+            <!-- USERS TAB -->
+            <div id="master-sec-users" class="master-section">
                 <div class="card">
                     <h3>Access Control (Users)</h3>
+                    <p style="font-size: 13px; color: #666; margin-top: 0;">Authorize new users to access this portal.</p>
                     <div class="form-group"><input type="text" id="newUserName" placeholder="Full Name (e.g. Rahul)"></div>
                     <div class="form-group"><input type="email" id="newUserEmail" placeholder="Authorized Gmail"></div>
-                    <div class="form-group"><select id="newUserRole"><option value="User">User</option><option value="Admin">Admin</option></select></div>
+                    <div class="form-group"><select id="newUserRole"><option value="User">Standard User</option><option value="Admin">Administrator</option></select></div>
                     <button class="btn btn-outline" onclick="addUser()">Register User</button>
                 </div>
             </div>
+
         </div>
 
         <div class="bottom-nav">
