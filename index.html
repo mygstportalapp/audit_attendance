@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Enterprise Audit Portal</title>
+    <title>Audit Work Tracker</title>
     
-    <!-- 🔥 PWA ANDROID INSTALL META TAGS -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
     <link rel="apple-touch-icon" href="https://placehold.co/512x512/0f62fe/ffffff.png?text=Audit\nTrack&font=Montserrat">
 
     <script src="const.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    
+
     <style>
         :root { --primary: #0f62fe; --bg: #f5f6f8; --text: #1a1a1a; --card: #ffffff; --border: #eaedf1; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent;}
@@ -70,7 +69,6 @@
         .sync-tracker { background: #fff; padding: 16px; border-radius: 16px; border: 1px solid var(--border); margin-top: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02);}
         .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 30px; font-size: 13px; font-weight: bold; display: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 
-        /* 🔥 Removed Max-Height so tables scroll naturally within the page */
         .table-container { border: 1px solid var(--border); border-radius: 12px; background: white; overflow: hidden; }
 
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; visibility: hidden; opacity: 0; transition: opacity 0.2s; backdrop-filter: blur(3px); }
@@ -86,6 +84,9 @@
         .bulk-card.selected .custom-cb, .master-cb.selected { background: var(--primary); border-color: var(--primary); }
         .bulk-card.selected .custom-cb::after, .master-cb.selected::after { content: "✔"; color: white; font-size: 14px; font-weight: bold; }
         .bulk-action-bar { background: white; padding: 12px 15px; border: 1px solid var(--border); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; margin-bottom: 0px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 5;}
+        
+        /* 🔥 NEW MASTERS GRID */
+        .masters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
     </style>
 </head>
 <body>
@@ -94,9 +95,8 @@
 
     <div id="login-screen" class="active-screen">
         <div class="login-container">
-            <h2>Audit Portal</h2>
+            <h2>Audit Track</h2>
             <p style="font-size: 15px; color: #666; margin-bottom: 25px;">Sign in with your authorized Google account</p>
-            
             <div id="g_id_onload" data-client_id="1021978161049-m0qcli73053amlqo773e9irqkharfved.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
             <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="pill" data-logo_alignment="center" style="display: flex; justify-content: center;"></div>
             <p id="loginError" style="color: red; font-size: 14px; display: none; margin-top: 20px; font-weight: bold;"></p>
@@ -112,28 +112,32 @@
         <div id="page-attendance" class="page active-page">
             <div class="card">
                 <form id="auditForm">
-                    <div class="form-group"><label>Audit Work</label><select id="workSelect" required><option value="">Select Work</option></select></div>
-                    <div class="form-group"><label>Date</label><input type="date" id="auditDate" required></div>
-                    <div class="form-group"><label>Visit Type</label><select id="visitType" required><option value="full">Full Day (1 Branch)</option><option value="split">Split Day (2 Branches)</option></select></div>
-                    <div class="form-group"><label id="lblVisit1">Society & Branch</label><select id="society1" required style="margin-bottom:10px;"><option value="">Select Society</option></select><select id="branch1" required><option value="">Select Branch</option></select></div>
-                    <div class="form-group" id="visit2Group" style="display: none;"><label>Afternoon Society & Branch</label><select id="society2" style="margin-bottom:10px;"><option value="">Select Society</option></select><select id="branch2"><option value="">Select Branch</option></select></div>
+                    <!-- Dynamic Date Max is applied in JS -->
+                    <div class="row">
+                        <div class="form-group"><label>Audit Date</label><input type="date" id="auditDate" required></div>
+                        <div class="form-group"><label>Visit Type</label><select id="visitType" required><option value="full">Full Day</option><option value="split">Split Day</option></select></div>
+                    </div>
+                    
+                    <div class="form-group"><label>Active Job / Work</label><select id="workSelect" required><option value="">Select Work</option></select></div>
+                    
+                    <div style="background: #fdfdfd; padding: 15px; border-radius: 12px; border: 1px solid #eaedf1; margin-bottom: 15px;">
+                        <div class="form-group"><label id="lblVisit1" style="color:var(--primary);">Society & Branch 1</label><select id="society1" required style="margin-bottom:10px;"><option value="">Select Society</option></select><select id="branch1" required><option value="">Select Branch</option></select></div>
+                        <div class="form-group" id="visit2Group" style="display: none; padding-top: 15px; border-top: 1px dashed #eaedf1;"><label style="color:var(--primary);">Society & Branch 2</label><select id="society2" style="margin-bottom:10px;"><option value="">Select Society</option></select><select id="branch2"><option value="">Select Branch</option></select></div>
+                    </div>
+                    
                     <button type="submit" class="btn btn-primary">Save Man-Day</button>
                 </form>
             </div>
         </div>
 
-        <!-- 🔥 UPDATED DESIGN: MAIN DASHBOARD STICKY HEADER -->
         <div id="page-report" class="page">
-            
-            <!-- Sticky Section -->
             <div style="position: sticky; top: -15px; background: var(--bg); z-index: 15; margin: -15px -15px 15px -15px; padding: 15px 15px 0 15px;">
                 <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none; box-shadow: none;">
-                    <h3 style="margin-bottom: 10px;">Audit Dashboard</h3>
+                    <h3 style="margin-bottom: 10px;">Dashboard</h3>
                     <div class="row" style="margin-bottom: 15px;">
                         <div><select id="reportWorkSelect" onchange="renderReport()"><option value="ALL">-- All Audits --</option></select></div>
                         <div id="adminUserFilter" style="display: none;"><select id="reportUserSelect" onchange="renderReport()"><option value="ALL">-- All Users --</option></select></div>
                     </div>
-                    
                     <div style="display: flex; gap: 10px;">
                         <div class="summary-box" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border-color: #c8e6c9; padding: 10px;">
                             <span style="color: #2e7d32;">Approved</span><div id="approvedManDaysDisplay" style="color: #2e7d32;">0</div>
@@ -146,7 +150,6 @@
                 <div style="height: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent); margin: 0 -15px; border-radius: 50%;"></div>
             </div>
 
-            <!-- Free scrolling table -->
             <div class="table-container">
                 <table id="reportTable">
                     <thead><tr><th>Summary & Job</th><th>MD</th><th>Status</th><th style="width: 30px;"></th></tr></thead>
@@ -157,11 +160,8 @@
             <div class="sync-tracker" style="margin-top: 20px;"><div id="syncStatusText" style="font-size: 14px; font-weight: 800; color: #0f62fe;">🟢 Auto-Sync Active</div><div id="lastSyncTime" style="font-size: 12px; color: #888; margin-top: 6px;">Waiting for first sync...</div></div>
         </div>
 
-        <!-- BULK APPROVAL VIEW -->
         <div id="page-bulk-approval" class="page">
-            
             <div style="position: sticky; top: -15px; background: var(--bg); z-index: 15; margin: -15px -15px 10px -15px; padding: 15px 15px 0 15px;">
-                
                 <div class="card" style="padding: 15px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; border-bottom: none; box-shadow: none;">
                     <button class="btn btn-outline" style="padding: 8px 15px; margin-bottom: 15px; border:none; background:#eaedf1; color:#333; width: auto;" onclick="closeBulkView()">⬅ Back</button>
                     <h3 id="bulkViewTitle" style="margin-bottom: 8px; font-size: 18px;"></h3>
@@ -174,7 +174,6 @@
                     </div>
                     <div id="bulkSelectionCount" style="font-size: 13px; color: var(--primary); font-weight: 800;"></div>
                 </div>
-                
                 <div style="height: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent); margin: 0 -15px; border-radius: 50%;"></div>
             </div>
 
@@ -187,28 +186,41 @@
         </div>
 
         <div id="page-masters" class="page">
-            <div class="card">
-                <h3>Users (Access Control)</h3>
-                <div class="form-group"><input type="text" id="newUserName" placeholder="Full Name (e.g. Rahul)"></div>
-                <div class="form-group"><input type="email" id="newUserEmail" placeholder="Authorized Gmail"></div>
-                <div class="form-group"><select id="newUserRole"><option value="User">User</option><option value="Admin">Admin</option></select></div>
-                <button class="btn btn-outline" onclick="addUser()">Add User</button>
+            
+            <!-- 🔥 NEW: Job Control Panel -->
+            <div class="card" style="border: 2px solid var(--primary);">
+                <h3 style="color: var(--primary);">Manage Jobs (Works)</h3>
+                <div class="row" style="margin-bottom: 15px;">
+                    <div style="flex: 2;"><input type="text" id="newWork" placeholder="New Work Name"></div>
+                    <div style="flex: 1;"><button class="btn btn-primary" style="padding: 14px;" onclick="addMaster('WorkMaster', 'newWork')">Add</button></div>
+                </div>
+                <div class="table-container" style="max-height: 250px;">
+                    <table id="masterWorksTable">
+                        <thead style="background: white;"><tr><th>Work</th><th>Status</th><th>Toggle</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
-            <div class="card">
-                <h3>Societies</h3>
-                <div class="row" style="margin-bottom: 10px;"><input type="text" id="newSocName" placeholder="Full Name"><input type="text" id="newSocCode" placeholder="Code (e.g. AC)" style="width: 40%;"></div>
-                <button class="btn btn-outline" onclick="addSociety()">Add Society</button>
-            </div>
-            <div class="card">
-                <h3>Branches</h3>
-                <div class="form-group"><select id="masterSocSelect"><option value="">Select Society</option></select></div>
-                <div class="form-group"><input type="text" id="newBranch" placeholder="Branch Name"></div>
-                <button class="btn btn-outline" onclick="addBranch()">Add Branch</button>
-            </div>
-             <div class="card">
-                <h3>Works</h3>
-                <div class="form-group"><input type="text" id="newWork" placeholder="Work Name"></div>
-                <button class="btn btn-outline" onclick="addMaster('WorkMaster', 'newWork')">Add Work</button>
+
+            <div class="masters-grid">
+                <div class="card">
+                    <h3>Societies</h3>
+                    <div class="row" style="margin-bottom: 10px;"><input type="text" id="newSocName" placeholder="Full Name"><input type="text" id="newSocCode" placeholder="Code" style="width: 40%;"></div>
+                    <button class="btn btn-outline" onclick="addSociety()">Add Society</button>
+                </div>
+                <div class="card">
+                    <h3>Branches</h3>
+                    <div class="form-group"><select id="masterSocSelect"><option value="">Select Society</option></select></div>
+                    <div class="form-group"><input type="text" id="newBranch" placeholder="Branch Name"></div>
+                    <button class="btn btn-outline" onclick="addBranch()">Add Branch</button>
+                </div>
+                <div class="card">
+                    <h3>Access Control (Users)</h3>
+                    <div class="form-group"><input type="text" id="newUserName" placeholder="Full Name (e.g. Rahul)"></div>
+                    <div class="form-group"><input type="email" id="newUserEmail" placeholder="Authorized Gmail"></div>
+                    <div class="form-group"><select id="newUserRole"><option value="User">User</option><option value="Admin">Admin</option></select></div>
+                    <button class="btn btn-outline" onclick="addUser()">Register User</button>
+                </div>
             </div>
         </div>
 
