@@ -10,11 +10,10 @@ let memBranches = [];
 let currentBulkUser = null;
 let currentBulkWork = null;
 
-// 🔥 Bumped to v9 to force browsers to clear any stuck data
-const dbName = "AuditAppDB_Final_v9"; 
+// 🔥 Bumped DB version to v10 to force clear the glitchy cache
+const dbName = "AuditAppDB_Final_v10"; 
 let db;
 
-// Prevent future dates on load
 document.addEventListener("DOMContentLoaded", () => {
     const today = new Date();
     const todayStr = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -201,7 +200,6 @@ function loadAllMasters() {
     db.transaction("WorkMaster", "readonly").objectStore("WorkMaster").getAll().onsuccess = (e) => {
         const works = e.target.result;
         
-        // Filter open works for the entry form
         const openWorks = works.filter(w => w.status !== 'Completed');
         document.getElementById('workSelect').innerHTML = `<option value="">Select Work</option>` + openWorks.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
         document.getElementById('reportWorkSelect').innerHTML = `<option value="ALL">-- All Audits --</option>` + works.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
@@ -270,7 +268,6 @@ function cascadeBranch(socSelectId, brSelectId, presetValue = null) {
 }
 document.getElementById('society1').addEventListener('change', () => cascadeBranch('society1', 'branch1'));
 document.getElementById('society2').addEventListener('change', () => cascadeBranch('society2', 'branch2'));
-
 // ==========================================
 // MASTER DATA MANAGEMENT
 // ==========================================
@@ -331,7 +328,6 @@ function toggleWorkStatus(workName, newStatus) {
 document.getElementById('auditForm').addEventListener('submit', (e) => {
     e.preventDefault();
     
-    // Validate Future Date
     const dateVal = document.getElementById('auditDate').value;
     const today = new Date();
     const todayStr = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -448,13 +444,15 @@ function renderReport() {
     db.transaction("Attendance", "readonly").objectStore("Attendance").getAll().onsuccess = (e) => {
         let records = e.target.result;
         
+        // Filter records first
         if (!isAdminUser()) records = records.filter(r => r.userName === currentUser.name);
         else if (selectedUser !== "ALL") records = records.filter(r => r.userName === selectedUser);
         
         if (selectedWork !== "ALL") records = records.filter(r => r.workName === selectedWork);
 
-        const approvedMD = records.filter(r => r.status === "Approved").reduce((sum, r) => sum + parseInt(r.manDay), 0);
-        const pendingMD = records.filter(r => r.status === "Pending").reduce((sum, r) => sum + parseInt(r.manDay), 0);
+        // 🔥 FIX: Calculate Top MD Counters perfectly based on filtered records
+        const approvedMD = records.filter(r => r.status === "Approved").reduce((sum, r) => sum + parseInt(r.manDay || 1), 0);
+        const pendingMD = records.filter(r => r.status === "Pending").reduce((sum, r) => sum + parseInt(r.manDay || 1), 0);
         
         document.getElementById('approvedManDaysDisplay').innerText = approvedMD;
         document.getElementById('pendingManDaysDisplay').innerText = pendingMD;
@@ -469,7 +467,7 @@ function renderReport() {
                 groups[key] = { userName: r.userName, workName: r.workName, records: [], totalMD: 0, pendingCount: 0, rejectedCount: 0 };
             }
             groups[key].records.push(r);
-            groups[key].totalMD += parseInt(r.manDay);
+            groups[key].totalMD += parseInt(r.manDay || 1);
             if(r.status === 'Pending') groups[key].pendingCount++;
             else if(r.status === 'Rejected') groups[key].rejectedCount++;
         });
@@ -568,9 +566,10 @@ function openBulkView(userName, workName) {
             return dB - dA;
         });
 
+        // 🔥 FIX: Calculate inner counters dynamically
         let pending = 0, approved = 0, rejected = 0, md = 0;
         records.forEach(r => {
-            md += parseInt(r.manDay) || 0;
+            md += parseInt(r.manDay || 1);
             if (r.status === 'Pending') pending++;
             else if (r.status === 'Approved') approved++;
             else rejected++;
@@ -599,7 +598,8 @@ function openBulkView(userName, workName) {
             const syncIcon = r.isSynced ? `<span style="font-size:10px; opacity:0.6;" title="Synced">☁️</span>` : `<span style="font-size:10px;" title="Pending Sync">⏳</span>`;
             let displayDate = formatDisplayDate(r.date);
 
-            const isSelectable = showActions && r.status === 'Pending';
+            // 🔥 FIX: Strictly lock checkbox rendering to Admins looking at Pending records
+            const isSelectable = isAdminUser() && r.status === 'Pending';
             
             return `
             <div class="bulk-card ${isSelectable ? 'selectable' : ''}" id="card-${r.id}" ${isSelectable ? `onclick="toggleCardSelection('${r.id}')"` : ''}>
