@@ -6,8 +6,14 @@ self.addEventListener('activate', (e) => {
     return self.clients.claim();
 });
 
-// Required by Android to trigger the "Install App" prompt
 self.addEventListener('fetch', (e) => {
+    // 🔥 THE FIX: Do not intercept POST requests! 
+    // Let all API calls to Google Apps Script pass through normally.
+    if (e.request.method === 'POST') {
+        return; 
+    }
+
+    // For normal page loads (GET requests), provide basic offline protection
     e.respondWith(
         fetch(e.request).catch(() => {
             return new Response("Offline Mode Active.");
