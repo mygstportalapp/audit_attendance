@@ -277,7 +277,7 @@ function pushMasterToCloud(type, arrayData, successMsg, callback) {
     .then(r => r.json()).then(data => {
         hideLoading();
         if (data.status === "success") { showToast(successMsg); callback(); autoSync(); } else showToast("Error: " + data.message); 
-    }).catch(() => { hideLoading(); showToast("Network Error"); });
+    }).catch(err => { console.error(err); hideLoading(); showToast("Network Error: Check Connection"); });
 }
 
 function addUser() {
@@ -311,24 +311,16 @@ function addBranch() {
 function toggleWorkStatus(workName, newStatus) {
     if (!window.confirm(`Mark job '${workName}' as ${newStatus}?`)) return;
     showLoading("Updating Job...");
-    
-    fetch(googleScriptURL, { 
-        method: 'POST', 
-        body: JSON.stringify({ action: "update_work_status", email: currentUser.email, workName: workName, status: newStatus }) 
-    })
+    fetch(googleScriptURL, { method: 'POST', body: JSON.stringify({ action: "update_work_status", email: currentUser.email, workName: workName, status: newStatus }) })
     .then(r => r.json()).then(data => {
-        hideLoading(); // 🔥 FIX: Hide the loading screen immediately!
-        
+        hideLoading();
         if (data.status === "success") {
             showToast(`Job marked ${newStatus}`);
             autoSync(); 
         } else {
             showToast("Error: " + data.message);
         }
-    }).catch(() => { 
-        hideLoading(); 
-        showToast("Network Error"); 
-    });
+    }).catch(err => { console.error(err); hideLoading(); showToast("Network Error: Check Connection"); });
 }
 
 // ==========================================
@@ -415,7 +407,11 @@ async function autoSync() {
                     if (r.isSynced && !cloudIds.has(r.id.toString())) store.delete(r.id);
                 });
 
-                fetchData.data.forEach(record => { record.isSynced = true; store.put(record); });
+                fetchData.data.forEach(record => { 
+                    record.id = record.id.toString(); // 🔥 FIX: Force Google Sheets IDs back to Strings
+                    record.isSynced = true; 
+                    store.put(record); 
+                });
             };
             
             if (fetchData.masters) syncMastersToLocal(fetchData.masters);
@@ -430,7 +426,7 @@ async function autoSync() {
                 updateSyncUI("Success", "🟢 Auto-Sync Active");
             };
         }
-    } catch (error) { updateSyncUI("Error", "🔴 Sync Failed"); } 
+    } catch (error) { console.error(error); updateSyncUI("Error", "🔴 Sync Failed"); } 
     finally { isSyncing = false; }
 }
 
@@ -443,22 +439,13 @@ function updateSyncUI(state, statusText) {
     
     if (state === "Syncing") {
         if (icon) icon.innerText = "🟡";
-        if (timeDiv) { 
-            timeDiv.innerText = "Syncing with cloud..."; 
-            timeDiv.style.color = "#d4a100"; 
-        }
+        if (timeDiv) { timeDiv.innerText = "Syncing with cloud..."; timeDiv.style.color = "#d4a100"; }
     } else if (state === "Success") {
         if (icon) icon.innerText = "🟢";
-        if (timeDiv) { 
-            timeDiv.innerText = "Synced: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
-            timeDiv.style.color = "#24a148"; 
-        }
+        if (timeDiv) { timeDiv.innerText = "Synced: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); timeDiv.style.color = "#24a148"; }
     } else {
         if (icon) icon.innerText = "🔴";
-        if (timeDiv) { 
-            timeDiv.innerText = "Offline / Sync Failed"; 
-            timeDiv.style.color = "#da1e28"; 
-        }
+        if (timeDiv) { timeDiv.innerText = "Offline / Sync Failed"; timeDiv.style.color = "#da1e28"; }
     }
 }
 
@@ -472,13 +459,11 @@ function renderReport() {
     db.transaction("Attendance", "readonly").objectStore("Attendance").getAll().onsuccess = (e) => {
         let records = e.target.result;
         
-        // Filter records first
         if (!isAdminUser()) records = records.filter(r => r.userName === currentUser.name);
         else if (selectedUser !== "ALL") records = records.filter(r => r.userName === selectedUser);
         
         if (selectedWork !== "ALL") records = records.filter(r => r.workName === selectedWork);
 
-        // 🔥 FIX: Calculate Top MD Counters perfectly based on filtered records
         const approvedMD = records.filter(r => r.status === "Approved").reduce((sum, r) => sum + parseInt(r.manDay || 1), 0);
         const pendingMD = records.filter(r => r.status === "Pending").reduce((sum, r) => sum + parseInt(r.manDay || 1), 0);
         
@@ -594,7 +579,6 @@ function openBulkView(userName, workName) {
             return dB - dA;
         });
 
-        // 🔥 FIX: Calculate inner counters dynamically
         let pending = 0, approved = 0, rejected = 0, md = 0;
         records.forEach(r => {
             md += parseInt(r.manDay || 1);
@@ -626,7 +610,6 @@ function openBulkView(userName, workName) {
             const syncIcon = r.isSynced ? `<span style="font-size:10px; opacity:0.6;" title="Synced">☁️</span>` : `<span style="font-size:10px;" title="Pending Sync">⏳</span>`;
             let displayDate = formatDisplayDate(r.date);
 
-            // 🔥 FIX: Strictly lock checkbox rendering to Admins looking at Pending records
             const isSelectable = isAdminUser() && r.status === 'Pending';
             
             return `
@@ -655,8 +638,7 @@ function submitBulkUpdate(newStatus) {
     showLoading(`Updating ${selectedCards.length} records...`);
 
     const updates = Array.from(selectedCards).map(card => {
-        const id = card.id.replace('card-', '');
-        return { id: id, status: newStatus };
+        return { id: card.id.replace('card-', '').toString(), status: newStatus }; // 🔥 FIX: String match
     });
 
     fetch(googleScriptURL, {
@@ -671,10 +653,11 @@ function submitBulkUpdate(newStatus) {
             updates.forEach(upd => {
                 tx.objectStore("Attendance").get(upd.id).onsuccess = (e) => {
                     let rec = e.target.result;
-                    rec.status = upd.status;
-                    rec.isSynced = true;
-                    
-                    tx.objectStore("Attendance").put(rec);
+                    if (rec) { // 🔥 FIX: Prevents crash if record is missing
+                        rec.status = upd.status;
+                        rec.isSynced = true;
+                        tx.objectStore("Attendance").put(rec);
+                    }
                     completedCount++;
                     
                     if(completedCount === updates.length) {
@@ -689,9 +672,10 @@ function submitBulkUpdate(newStatus) {
             hideLoading();
             showToast("Failed to update cloud.");
         }
-    }).catch(() => {
+    }).catch((err) => {
+        console.error("Bulk Update Error:", err); // Logs real error to console
         hideLoading();
-        showToast("Network Error");
+        showToast(`Error Details: ${err.message}`); // Shows real error in red toast!
     });
 }
 
