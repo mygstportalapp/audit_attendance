@@ -311,15 +311,24 @@ function addBranch() {
 function toggleWorkStatus(workName, newStatus) {
     if (!window.confirm(`Mark job '${workName}' as ${newStatus}?`)) return;
     showLoading("Updating Job...");
-    fetch(googleScriptURL, { method: 'POST', body: JSON.stringify({ action: "update_work_status", email: currentUser.email, workName: workName, status: newStatus }) })
+    
+    fetch(googleScriptURL, { 
+        method: 'POST', 
+        body: JSON.stringify({ action: "update_work_status", email: currentUser.email, workName: workName, status: newStatus }) 
+    })
     .then(r => r.json()).then(data => {
+        hideLoading(); // 🔥 FIX: Hide the loading screen immediately!
+        
         if (data.status === "success") {
             showToast(`Job marked ${newStatus}`);
             autoSync(); 
         } else {
-            hideLoading(); showToast("Error: " + data.message);
+            showToast("Error: " + data.message);
         }
-    }).catch(() => { hideLoading(); showToast("Network Error"); });
+    }).catch(() => { 
+        hideLoading(); 
+        showToast("Network Error"); 
+    });
 }
 
 // ==========================================
