@@ -2,7 +2,7 @@ const googleScriptURL = GsheetUrl;
 let currentUser = null, memSocieties = [], memBranches = [];
 let currentBulkUser = null, currentBulkWork = null;
 
-const dbName = "AuditAppDB_Final_v8"; // 🔥 Bumping version to force refresh
+const dbName = "AuditAppDB_Final_v8"; 
 let db;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -115,6 +115,14 @@ function switchPage(pId, nav = null) {
     if(pId === 'report') renderReport();
 }
 
+// 🔥 NEW: Manage internal tabs inside the Masters page
+function switchMasterTab(secId, tabElement) {
+    document.querySelectorAll('.master-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.master-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('master-sec-' + secId).classList.add('active');
+    tabElement.classList.add('active');
+}
+
 function cascadeBranch(sId, bId) {
     const c = document.getElementById(sId).value;
     const b = document.getElementById(bId);
@@ -141,6 +149,34 @@ function toggleWorkStatus(w, s) {
     showLoading();
     fetch(googleScriptURL, { method: 'POST', body: JSON.stringify({ action: "update_work_status", email: currentUser.email, workName: w, status: s }) })
     .then(() => autoSync());
+}
+
+function addSociety() {
+    const name = document.getElementById('newSocName').value.trim();
+    const code = document.getElementById('newSocCode').value.trim().toUpperCase();
+    if (!name || !code) return showToast("Provide Name and Code.");
+    showLoading();
+    fetch(googleScriptURL, { method: 'POST', body: JSON.stringify({ action: "add_master", type: "Societies", email: currentUser.email, data: [name, code] }) })
+    .then(r => r.json()).then(() => { document.getElementById('newSocName').value = ""; document.getElementById('newSocCode').value = ""; autoSync(); hideLoading(); showToast("Society Added!"); });
+}
+
+function addBranch() {
+    const socCode = document.getElementById('masterSocSelect').value;
+    const branchName = document.getElementById('newBranch').value.trim();
+    if (!socCode || !branchName) return showToast("Select Society and provide Branch.");
+    showLoading();
+    fetch(googleScriptURL, { method: 'POST', body: JSON.stringify({ action: "add_master", type: "Branches", email: currentUser.email, data: [socCode, branchName] }) })
+    .then(r => r.json()).then(() => { document.getElementById('newBranch').value = ""; autoSync(); hideLoading(); showToast("Branch Added!"); });
+}
+
+function addUser() {
+    const name = document.getElementById('newUserName').value.trim();
+    const email = document.getElementById('newUserEmail').value.trim().toLowerCase();
+    const role = document.getElementById('newUserRole').value;
+    if (!name || !email) return showToast("Provide Name and Gmail.");
+    showLoading();
+    fetch(googleScriptURL, { method: 'POST', body: JSON.stringify({ action: "add_master", type: "Users", email: currentUser.email, data: [email, name, role] }) })
+    .then(r => r.json()).then(() => { document.getElementById('newUserName').value = ""; document.getElementById('newUserEmail').value = ""; autoSync(); hideLoading(); showToast("User Registered!"); });
 }
 
 document.getElementById('auditForm').addEventListener('submit', (e) => {
